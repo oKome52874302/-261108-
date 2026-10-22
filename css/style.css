@@ -1,0 +1,73 @@
+:root {
+  --bg: #0b1026;
+  --panel: #18204a;
+  --text: #ffffff;
+  --muted: #9aa4d6;
+  --accent: #ffcc00;
+  --ok: #2ecc71;
+  --ng: #ff4757;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+}
+
+.screen { display: none; height: 100vh; padding: 2vh 3vw; flex-direction: column; align-items: center; }
+.screen.active { display: flex; }
+
+/* ---- 設定画面 ---- */
+.logo { font-size: 8vw; margin: 4vh 0; color: var(--accent); letter-spacing: .1em; }
+.setup-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 360px)); gap: 16px 32px; font-size: 18px; }
+.setup-grid label { display: flex; flex-direction: column; gap: 6px; }
+.setup-grid label.check { flex-direction: row; align-items: center; }
+.setup-grid input, .setup-grid textarea { font-size: 18px; padding: 6px 10px; border-radius: 6px; border: none; }
+.big-btn { margin-top: 4vh; font-size: 28px; padding: 14px 60px; border: none; border-radius: 12px; background: var(--accent); color: #000; font-weight: bold; cursor: pointer; }
+.hint { color: var(--muted); margin-top: 2vh; }
+
+/* ---- ゲーム画面 ---- */
+.game-header { width: 100%; display: flex; justify-content: space-between; align-items: baseline; }
+.team-name { font-size: 4vw; font-weight: bold; color: var(--accent); }
+.round-info { font-size: 2vw; color: var(--muted); }
+
+.timer { font-size: 14vh; font-weight: bold; font-variant-numeric: tabular-nums; line-height: 1; margin: 1vh 0; }
+.timer.danger { color: var(--ng); animation: pulse 1s infinite; }
+.timer.paused { opacity: .4; }
+
+.theme { font-size: 5vw; font-weight: bold; text-align: center; min-height: 12vh; padding: 1vh 2vw; background: var(--panel); border-radius: 16px; width: 100%; display: flex; align-items: center; justify-content: center; }
+.theme.hidden { color: var(--muted); }
+
+.slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5vw; margin: 3vh 0; width: 100%; }
+.slot { flex: 0 0 17%; min-height: 14vh; border: 4px solid var(--muted); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 2.6vw; font-weight: bold; text-align: center; padding: 4px; }
+.slot .num { font-size: 1.4vw; color: var(--muted); }
+.slot.current { border-color: var(--accent); box-shadow: 0 0 24px var(--accent); }
+.slot.filled { border-color: var(--ok); background: rgba(46, 204, 113, .2); }
+.slot.pop { animation: pop .25s; }
+
+.banner { font-size: 6vw; font-weight: bold; min-height: 10vh; text-align: center; }
+.banner.clear { color: var(--accent); }
+.banner.fail { color: var(--ng); }
+.banner.miss { color: var(--ng); font-size: 4vw; }
+
+.examples { font-size: 1.6vw; color: var(--muted); text-align: center; }
+
+.operator { margin-top: auto; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: .7; }
+.operator input { width: 50%; font-size: 20px; padding: 6px 12px; border-radius: 6px; border: none; }
+.keys { display: flex; gap: 20px; font-size: 14px; color: var(--muted); }
+kbd { background: #333a66; border-radius: 4px; padding: 1px 6px; color: #fff; }
+
+body.flash-ng { animation: flashNg .4s; }
+
+/* ---- スコア画面 ---- */
+#screen-score h2 { font-size: 5vw; color: var(--accent); }
+.score-list { font-size: 4vw; width: 60%; }
+.score-list li { display: flex; justify-content: space-between; border-bottom: 2px solid var(--panel); padding: 1vh 0; }
+
+@keyframes pulse { 50% { transform: scale(1.08); } }
+@keyframes pop { from { transform: scale(.7); } to { transform: scale(1); } }
+@keyframes flashNg { 0%, 100% { background: var(--bg); } 30% { background: #5a0010; } }
