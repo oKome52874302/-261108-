@@ -22,7 +22,22 @@ html, body {
 .screen.active { display: flex; }
 
 /* ---- 設定画面 ---- */
-.logo { font-size: 8vw; margin: 4vh 0; color: var(--accent); letter-spacing: .1em; }
+#screen-setup { height: auto; min-height: 100vh; padding-bottom: 6vh; }
+.logo { font-size: 6vw; margin: 3vh 0; color: var(--accent); letter-spacing: .1em; }
+.setup-section { width: 100%; max-width: 1100px; margin-bottom: 3vh; }
+.setup-section h2 { font-size: 22px; border-left: 6px solid var(--accent); padding-left: 10px; margin: 0 0 6px; }
+.setup-section .hint { margin: 0 0 10px; font-size: 14px; }
+.team-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 12px; }
+.team-card { background: var(--panel); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.team-card-head { display: flex; gap: 8px; }
+.team-name-input { flex: 1; min-width: 0; }
+.team-card input, .team-card textarea, #input-questions { font-size: 16px; padding: 6px 10px; border-radius: 6px; border: none; font-family: inherit; }
+#input-questions { width: 100%; }
+.remove-btn { border: none; border-radius: 6px; background: #333a66; color: #fff; font-size: 18px; width: 36px; cursor: pointer; }
+.remove-btn:hover { background: var(--ng); }
+.sub-btn { display: inline-block; font-size: 16px; padding: 8px 18px; border: 2px solid var(--muted); border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
+.sub-btn:hover { border-color: var(--accent); }
+.setup-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .setup-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 360px)); gap: 16px 32px; font-size: 18px; }
 .setup-grid label { display: flex; flex-direction: column; gap: 6px; }
 .setup-grid label.check { flex-direction: row; align-items: center; }
@@ -35,7 +50,7 @@ html, body {
 .team-name { font-size: 4vw; font-weight: bold; color: var(--accent); }
 .round-info { font-size: 2vw; color: var(--muted); }
 
-.timer { font-size: 14vh; font-weight: bold; font-variant-numeric: tabular-nums; line-height: 1; margin: 1vh 0; }
+.timer { font-size: 12vh; font-weight: bold; font-variant-numeric: tabular-nums; line-height: 1; margin: 1vh 0; }
 .timer.danger { color: var(--ng); animation: pulse 1s infinite; }
 .timer.paused { opacity: .4; }
 
@@ -45,6 +60,9 @@ html, body {
 .slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5vw; margin: 3vh 0; width: 100%; }
 .slot { flex: 0 0 17%; min-height: 14vh; border: 4px solid var(--muted); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 2.6vw; font-weight: bold; text-align: center; padding: 4px; }
 .slot .num { font-size: 1.4vw; color: var(--muted); }
+.slot .player { font-size: 1.4vw; color: var(--muted); }
+.slot.current .player { color: var(--accent); }
+.current-player { font-size: 3vw; font-weight: bold; color: var(--accent); min-height: 4vw; margin-bottom: 1vh; }
 .slot.current { border-color: var(--accent); box-shadow: 0 0 24px var(--accent); }
 .slot.filled { border-color: var(--ok); background: rgba(46, 204, 113, .2); }
 .slot.pop { animation: pop .25s; }

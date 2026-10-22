@@ -5,7 +5,7 @@
 const $ = (id) => document.getElementById(id);
 
 const state = {
-  teams: [],          // { name, score }
+  teams: [],          // { name, players, score, offset }  offset: 次に答えるプレイヤーの位置
   settings: { time: 30, target: 5, bonus: 3 },
   questions: [],
   round: 0,           // 何ラウンド目か（0始まり）
@@ -22,6 +22,12 @@ const state = {
 const currentTeam = () => state.teams[state.round % state.teams.length];
 const currentQuestion = () => state.questions[state.round % state.questions.length];
 
+// i 番目の枠を担当するプレイヤー名（プレイヤー未登録なら空文字）
+function playerFor(team, i) {
+  if (team.players.length === 0) return "";
+  return team.players[(team.offset + i) % team.players.length];
+}
+
 // ---------- 画面切り替え ----------
 function showScreen(name) {
   document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
@@ -31,16 +37,14 @@ function showScreen(name) {
 // ---------- セットアップ ----------
 function startGame() {
   Sound.init();
-  const names = $("input-teams").value.split("\n").map((s) => s.trim()).filter(Boolean);
-  if (names.length === 0) return alert("チーム名を1つ以上入力してください");
-  if (!window.QUESTIONS || window.QUESTIONS.length === 0) return alert("お題がありません（data/questions.js）");
+  const data = Setup.read();
+  if (data.teams.length === 0) return alert("チームを1つ以上追加してください");
+  if (data.questions.length === 0) return alert("お題を1問以上入力してください");
 
-  state.teams = names.map((name) => ({ name, score: 0 }));
-  state.settings.time = Number($("input-time").value) || 30;
-  state.settings.target = Number($("input-target").value) || 5;
-  state.settings.bonus = Number($("input-bonus").value) || 0;
-  state.questions = [...window.QUESTIONS];
-  if ($("input-shuffle").checked) shuffle(state.questions);
+  state.teams = data.teams.map((t) => ({ ...t, score: 0, offset: 0 }));
+  state.settings = data.settings;
+  state.questions = data.questions;
+  if (data.settings.shuffle) shuffle(state.questions);
   state.round = 0;
 
   showScreen("game");
@@ -108,7 +112,11 @@ function roundPoints() {
 }
 
 function nextRound() {
-  currentTeam().score += roundPoints();
+  const team = currentTeam();
+  team.score += roundPoints();
+  // 次回は今回答えた人の続きから。時間切れなら詰まった人も「答えた」扱いで次の人へ
+  const answered = Math.min(state.settings.target, state.answers.length + (isCleared() ? 0 : 1));
+  team.offset += answered;
   state.round++;
   prepareRound();
 }
@@ -164,7 +172,9 @@ function render() {
   const { target } = state.settings;
 
   $("team-name").textContent = team.name;
+  const current = state.phase === "playing" || state.phase === "paused" ? playerFor(team, state.answers.length) : "";
   $("round-info").textContent = `第${state.round + 1}問　不正解 ${state.misses}`;
+  $("current-player").textContent = current && !isCleared() ? `回答者：${current}` : "";
 
   const theme = $("theme");
   const hidden = state.phase === "ready";
@@ -180,7 +190,8 @@ function render() {
     if (ans) el.classList.add("filled");
     if (ans && i === state.answers.length - 1 && state.justFilled) el.classList.add("pop");
     else if (i === state.answers.length && state.phase === "playing") el.classList.add("current");
-    el.innerHTML = `<span class="num">${i + 1}</span><span class="text"></span>`;
+    el.innerHTML = `<span class="num">${i + 1}</span><span class="player"></span><span class="text"></span>`;
+    el.querySelector(".player").textContent = playerFor(team, i);
     el.querySelector(".text").textContent = ans || "";
     slots.appendChild(el);
   }
@@ -272,4 +283,4 @@ document.addEventListener("keydown", (e) => {
 });
 
 $("btn-start").addEventListener("click", startGame);
-$("q-count").textContent = (window.QUESTIONS || []).length;
+Setup.init();
