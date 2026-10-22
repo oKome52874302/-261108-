@@ -38,6 +38,10 @@
           <input id="input-bonus" type="number" min="0" max="100" value="3">
         </label>
         <label class="check"><input id="input-shuffle" type="checkbox" checked> お題をシャッフル</label>
+        <label>音量
+          <input id="input-volume" type="range" min="0" max="1" step="0.05" value="0.8">
+        </label>
+        <label class="check"><input id="input-bgm" type="checkbox" checked> 回答中にBGMを流す</label>
       </div>
     </div>
 
@@ -72,7 +76,7 @@
       <div class="keys">
         <span><kbd>Space</kbd> 開始/一時停止</span>
         <span><kbd>Enter</kbd> 正解</span>
-        <span><kbd>X</kbd> 不正解</span>
+        <span><kbd>X</kbd> / <kbd>Shift+Enter</kbd> 不正解（同じ人が考え直し）</span>
         <span><kbd>Backspace</kbd> 取り消し</span>
         <span><kbd>N</kbd> 次へ</span>
         <span><kbd>S</kbd> スコア</span>

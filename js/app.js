@@ -11,7 +11,8 @@ const state = {
   round: 0,           // 何ラウンド目か（0始まり）
   phase: "setup",     // setup | ready | playing | paused | result
   answers: [],        // 正解した回答テキスト
-  misses: 0,
+  wrongs: [],         // 不正解 { slot, text }。同じ枠の人が考え直す
+  history: [],        // 判定の履歴（"correct" | "wrong"）。取り消し用
   remainingMs: 0,
   endAt: 0,
   timerId: null,
@@ -43,6 +44,8 @@ function startGame() {
 
   state.teams = data.teams.map((t) => ({ ...t, score: 0, offset: 0 }));
   state.settings = data.settings;
+  Sound.setVolume(data.settings.volume);
+  Sound.setBgmEnabled(data.settings.bgm);
   state.questions = data.questions;
   if (data.settings.shuffle) shuffle(state.questions);
   state.round = 0;
@@ -62,14 +65,18 @@ function shuffle(arr) {
 function prepareRound() {
   state.phase = "ready";
   state.answers = [];
-  state.misses = 0;
+  state.wrongs = [];
+  state.history = [];
   state.remainingMs = state.settings.time * 1000;
   state.lastTickSec = null;
+  Sound.resetBgm();
   render();
 }
 
 function startTimer() {
+  if (state.phase === "ready") Sound.open();
   state.phase = "playing";
+  Sound.startBgm();
   state.endAt = performance.now() + state.remainingMs;
   state.timerId = setInterval(updateTimer, 50);
   $("input-answer").focus();
@@ -80,6 +87,7 @@ function pauseTimer() {
   clearInterval(state.timerId);
   state.remainingMs = Math.max(0, state.endAt - performance.now());
   state.phase = "paused";
+  Sound.stopBgm();
   render();
 }
 
@@ -87,9 +95,11 @@ function updateTimer() {
   state.remainingMs = Math.max(0, state.endAt - performance.now());
   const sec = Math.ceil(state.remainingMs / 1000);
   if (sec <= 5 && sec > 0 && sec !== state.lastTickSec) Sound.tick();
+  Sound.setIntense(sec <= 5);
   state.lastTickSec = sec;
   if (state.remainingMs <= 0) {
     Sound.timeUp();
+    Sound.fail();
     finishRound();
   } else {
     renderTimer();
@@ -98,6 +108,7 @@ function updateTimer() {
 
 function finishRound() {
   clearInterval(state.timerId);
+  Sound.stopBgm();
   state.phase = "result";
   render();
 }
@@ -122,12 +133,18 @@ function nextRound() {
 }
 
 // ---------- 判定 ----------
+function takeInput() {
+  const input = $("input-answer");
+  const text = input.value.trim();
+  input.value = "";
+  return text;
+}
+
 function markCorrect() {
   if (state.phase !== "playing") return;
-  const input = $("input-answer");
-  state.answers.push(input.value.trim() || "○");
+  state.answers.push(takeInput() || "○");
+  state.history.push("correct");
   state.justFilled = true;
-  input.value = "";
   if (isCleared()) {
     Sound.clear();
     finishRound();
@@ -137,23 +154,34 @@ function markCorrect() {
   }
 }
 
+// 不正解でも枠は進まず、同じ人が考え直す
 function markWrong() {
   if (state.phase !== "playing") return;
-  state.misses++;
+  state.wrongs.push({ slot: state.answers.length, text: takeInput() });
+  state.history.push("wrong");
   Sound.wrong();
   document.body.classList.remove("flash-ng");
   void document.body.offsetWidth; // アニメーション再始動のため
   document.body.classList.add("flash-ng");
   render();
+  const slot = document.querySelector(".slot.current");
+  if (slot) slot.classList.add("shake");
 }
 
-// 判定ミスの取り消し（直前の正解を1つ戻す）
+const wrongsFor = (slot) => state.wrongs.filter((w) => w.slot === slot);
+
+// 判定ミスの取り消し（直前の判定を1つ戻す）
 function undo() {
-  if (state.answers.length === 0) return;
-  const wasCleared = isCleared();
-  state.answers.pop();
-  // クリアで終了していた場合は、時間が残っていれば一時停止状態に戻す
-  if (state.phase === "result" && wasCleared && state.remainingMs > 0) state.phase = "paused";
+  const last = state.history.pop();
+  if (!last) return;
+  if (last === "wrong") {
+    state.wrongs.pop();
+  } else {
+    const wasCleared = isCleared();
+    state.answers.pop();
+    // クリアで終了していた場合は、時間が残っていれば一時停止状態に戻す
+    if (state.phase === "result" && wasCleared && state.remainingMs > 0) state.phase = "paused";
+  }
   render();
 }
 
@@ -173,8 +201,13 @@ function render() {
 
   $("team-name").textContent = team.name;
   const current = state.phase === "playing" || state.phase === "paused" ? playerFor(team, state.answers.length) : "";
-  $("round-info").textContent = `第${state.round + 1}問　不正解 ${state.misses}`;
-  $("current-player").textContent = current && !isCleared() ? `回答者：${current}` : "";
+  const retries = wrongsFor(state.answers.length).length;
+  $("round-info").textContent = `第${state.round + 1}問　不正解 ${state.wrongs.length}`;
+  const label = current || `${state.answers.length + 1}人目`;
+  $("current-player").textContent = (state.phase === "playing" || state.phase === "paused") && !isCleared()
+    ? `回答者：${label}${retries ? `（考え直し ${retries}回目）` : ""}`
+    : "";
+  $("current-player").classList.toggle("retry", retries > 0);
 
   const theme = $("theme");
   const hidden = state.phase === "ready";
@@ -190,9 +223,17 @@ function render() {
     if (ans) el.classList.add("filled");
     if (ans && i === state.answers.length - 1 && state.justFilled) el.classList.add("pop");
     else if (i === state.answers.length && state.phase === "playing") el.classList.add("current");
-    el.innerHTML = `<span class="num">${i + 1}</span><span class="player"></span><span class="text"></span>`;
+    el.innerHTML = `<span class="num">${i + 1}</span><span class="player"></span><span class="text"></span><span class="wrongs"></span>`;
     el.querySelector(".player").textContent = playerFor(team, i);
     el.querySelector(".text").textContent = ans || "";
+    // 不正解だった回答を打ち消し線で表示（文字なしなら ✕ のみ）
+    const wrongs = wrongsFor(i);
+    if (wrongs.length && !ans) el.classList.add("retry");
+    wrongs.forEach((w) => {
+      const span = document.createElement("s");
+      span.textContent = w.text ? `✕${w.text}` : "✕";
+      el.querySelector(".wrongs").appendChild(span);
+    });
     slots.appendChild(el);
   }
 
@@ -250,9 +291,11 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
+  // Shift+Enter は入力中の回答ごと不正解にする
   if (e.key === "Enter") {
     e.preventDefault();
-    markCorrect();
+    if (e.shiftKey) markWrong();
+    else markCorrect();
     return;
   }
   if (typing) return;
