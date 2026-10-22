@@ -62,6 +62,10 @@ html, body {
 .slot .num { font-size: 1.4vw; color: var(--muted); }
 .slot .player { font-size: 1.4vw; color: var(--muted); }
 .slot.current .player { color: var(--accent); }
+.slot .wrongs { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: center; font-size: 1.6vw; color: var(--ng); }
+.slot.current.retry { border-color: var(--ng); box-shadow: 0 0 24px var(--ng); }
+.slot.shake { animation: shake .4s; }
+.current-player.retry { color: var(--ng); }
 .current-player { font-size: 3vw; font-weight: bold; color: var(--accent); min-height: 4vw; margin-bottom: 1vh; }
 .slot.current { border-color: var(--accent); box-shadow: 0 0 24px var(--accent); }
 .slot.filled { border-color: var(--ok); background: rgba(46, 204, 113, .2); }
@@ -86,6 +90,7 @@ body.flash-ng { animation: flashNg .4s; }
 .score-list { font-size: 4vw; width: 60%; }
 .score-list li { display: flex; justify-content: space-between; border-bottom: 2px solid var(--panel); padding: 1vh 0; }
 
+@keyframes shake { 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
 @keyframes pulse { 50% { transform: scale(1.08); } }
 @keyframes pop { from { transform: scale(.7); } to { transform: scale(1); } }
 @keyframes flashNg { 0%, 100% { background: var(--bg); } 30% { background: #5a0010; } }
