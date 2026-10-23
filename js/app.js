@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 
 const state = {
   teams: [],          // { name, players, score, offset }  offset: 次に答えるプレイヤーの位置
-  settings: { time: 30, target: 5, bonus: 3 },
+  settings: { time: 30, target: 5, point: 10, bonus: 0 },
   questions: [],
   round: 0,           // 何ラウンド目か（0始まり）
   phase: "setup",     // setup | ready | playing | paused | result
@@ -100,6 +100,7 @@ function updateTimer() {
   if (state.remainingMs <= 0) {
     Sound.timeUp();
     Sound.fail();
+    explode();
     finishRound();
   } else {
     renderTimer();
@@ -117,9 +118,19 @@ function isCleared() {
   return state.answers.length >= state.settings.target;
 }
 
-// 得点 = 正解数 + (クリア時ボーナス)。「次へ」で確定させるので、結果画面でも取り消しが効く
+// 得点 = 正解数 × 1人の点数 + (クリア時ボーナス)。「次へ」で確定させるので、結果画面でも取り消しが効く
 function roundPoints() {
-  return state.answers.length + (isCleared() ? state.settings.bonus : 0);
+  return state.answers.length * state.settings.point + (isCleared() ? state.settings.bonus : 0);
+}
+
+// 時間切れの爆発演出
+function explode() {
+  const el = $("explosion");
+  el.classList.remove("show");
+  void el.offsetWidth; // アニメーション再始動のため
+  el.classList.add("show");
+  document.body.classList.add("quake");
+  setTimeout(() => document.body.classList.remove("quake"), 600);
 }
 
 function nextRound() {
@@ -192,6 +203,18 @@ function renderTimer() {
   timer.textContent = sec;
   timer.classList.toggle("danger", state.phase === "playing" && sec <= 5);
   timer.classList.toggle("paused", state.phase === "paused" || state.phase === "ready");
+
+  // 導火線を残り時間の割合だけ残し、火花を先端に置く
+  const fuse = $("fuse");
+  const len = fuse.getTotalLength();
+  const ratio = Math.max(0, state.remainingMs / (state.settings.time * 1000));
+  fuse.style.strokeDasharray = len;
+  fuse.style.strokeDashoffset = len * (1 - ratio);
+  const tip = fuse.getPointAtLength(len * ratio);
+  const spark = $("spark");
+  spark.setAttribute("transform", `translate(${tip.x} ${tip.y})`);
+  spark.classList.toggle("lit", state.phase === "playing");
+  spark.style.display = ratio > 0 ? "" : "none";
 }
 
 function render() {
