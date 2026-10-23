@@ -12,7 +12,7 @@ const Setup = (() => {
         { name: "Bチーム", players: [] },
       ],
       questions: (window.QUESTIONS || []).map((q) => ({ theme: q.theme, examples: q.examples || [] })),
-      settings: { time: 30, target: 5, bonus: 3, shuffle: true, bgm: true, volume: 0.8 },
+      settings: { time: 30, target: 5, point: 10, bonus: 0, shuffle: true, bgm: true, volume: 0.8 },
     };
   }
 
@@ -59,6 +59,7 @@ const Setup = (() => {
     $("input-questions").value = formatQuestions(data.questions);
     $("input-time").value = data.settings.time;
     $("input-target").value = data.settings.target;
+    $("input-point").value = data.settings.point;
     $("input-bonus").value = data.settings.bonus;
     $("input-shuffle").checked = data.settings.shuffle;
     $("input-bgm").checked = data.settings.bgm;
@@ -77,6 +78,7 @@ const Setup = (() => {
       settings: {
         time: Number($("input-time").value) || 30,
         target: Number($("input-target").value) || 5,
+        point: Number($("input-point").value) || 0,
         bonus: Number($("input-bonus").value) || 0,
         shuffle: $("input-shuffle").checked,
         bgm: $("input-bgm").checked,
