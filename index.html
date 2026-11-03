@@ -12,7 +12,7 @@
 <body>
   <!-- 設定画面 -->
   <section id="screen-setup" class="screen active">
-    <h1 class="logo">FIVE BOMBER</h1>
+    <h1 id="logo" class="logo">FIVE BOMBER</h1>
 
     <div class="setup-section">
       <h2>チーム・プレイヤー</h2>
@@ -34,8 +34,12 @@
         <label>制限時間（秒）
           <input id="input-time" type="number" min="5" max="180" value="30">
         </label>
-        <label>目標正解数
+        <label>目標正解数（＝1問で答える人数）
           <input id="input-target" type="number" min="1" max="12" value="5">
+          <span class="presets">
+            <button type="button" class="preset-btn" data-target="5">ファイブ（5）</button>
+            <button type="button" class="preset-btn" data-target="6">シックス（6）</button>
+          </span>
         </label>
         <label>1人正解の点数
           <input id="input-point" type="number" min="0" max="100" value="10">
@@ -92,7 +96,9 @@
         </svg>
         <div id="timer" class="timer">30</div>
       </div>
-      <div class="header-side"></div>
+      <div class="header-side right">
+        <div id="mode-name" class="mode-name"></div>
+      </div>
     </header>
 
     <div id="current-player" class="current-player"></div>

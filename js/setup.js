@@ -32,6 +32,23 @@ const Setup = (() => {
       .join("\n");
   }
 
+  // 目標正解数からゲーム名を作る（5 → FIVE BOMBER / ファイブボンバー）
+  const NAMES = [
+    null, ["ONE", "ワン"], ["TWO", "ツー"], ["THREE", "スリー"], ["FOUR", "フォー"], ["FIVE", "ファイブ"],
+    ["SIX", "シックス"], ["SEVEN", "セブン"], ["EIGHT", "エイト"], ["NINE", "ナイン"], ["TEN", "テン"],
+    ["ELEVEN", "イレブン"], ["TWELVE", "トゥエルブ"],
+  ];
+  function modeName(target) {
+    const [en, ja] = NAMES[target] || [String(target), String(target)];
+    return { en: `${en} BOMBER`, ja: `${ja}ボンバー` };
+  }
+
+  function updateTitle() {
+    const name = modeName(Number($("input-target").value) || 5);
+    $("logo").textContent = name.en;
+    document.title = name.ja;
+  }
+
   const splitLines = (text) => text.split("\n").map((s) => s.trim()).filter(Boolean);
 
   // ---------- 画面 ⇄ データ ----------
@@ -65,6 +82,7 @@ const Setup = (() => {
     $("input-bgm").checked = data.settings.bgm;
     $("input-volume").value = data.settings.volume;
     updateCount();
+    updateTitle();
   }
 
   function read() {
@@ -95,6 +113,7 @@ const Setup = (() => {
   // localStorage はプライベートモード等で使えないことがあるので失敗しても動くようにする
   function save() {
     updateCount();
+    updateTitle();
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(read()));
     } catch (e) { /* 保存できなくてもゲームは続行 */ }
@@ -152,6 +171,10 @@ const Setup = (() => {
       save();
     });
     $("btn-export").addEventListener("click", exportFile);
+    document.querySelectorAll(".preset-btn").forEach((btn) => btn.addEventListener("click", () => {
+      $("input-target").value = btn.dataset.target;
+      save();
+    }));
     $("input-import").addEventListener("change", (e) => {
       if (e.target.files[0]) importFile(e.target.files[0]);
       e.target.value = "";
@@ -163,5 +186,5 @@ const Setup = (() => {
     });
   }
 
-  return { init, read };
+  return { init, read, modeName };
 })();
