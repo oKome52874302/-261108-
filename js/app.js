@@ -369,21 +369,48 @@ function toggleScore() {
   }
 }
 
-// ---------- キー操作 ----------
+// ---------- 操作 ----------
+// キーボードとボタンの両方から呼ぶ
+const actions = {
+  toggle() {
+    if (state.phase === "ready" || state.phase === "paused") startTimer();
+    else if (state.phase === "playing") pauseTimer();
+  },
+  answer() { if (state.phase === "playing") $("input-answer").focus(); },
+  correct: markCorrect,
+  wrong: markWrong,
+  undo,
+  next() { if (state.phase === "result") nextRound(); },
+  score: toggleScore,
+};
+
+// 判定ショートカットは e.code（物理キー）で見る。
+// e.key だと日本語入力がオンのとき "Process" になり、どのキーも効かなくなるため
+const KEYMAP = {
+  Space: "toggle",
+  Enter: "answer",
+  NumpadEnter: "answer",
+  KeyO: "correct",
+  KeyX: "wrong",
+  Backspace: "undo",
+  KeyN: "next",
+  KeyS: "score",
+};
+
 // 入力欄にフォーカスがあるときは文字入力を優先し、Enter（判定へ送る）と Esc（入力をやめる）だけ扱う
 // 判定（O / X）は入力欄の外で行うので、答えを打つだけで正解になることはない
 document.addEventListener("keydown", (e) => {
   if (state.phase === "setup") return;
   const input = $("input-answer");
-  // 日本語変換の確定 Enter は無視（Safari は isComposing が false になるため keyCode も見る）
-  if (e.isComposing || e.keyCode === 229) return;
 
   if ($("screen-score").classList.contains("active")) {
-    if (e.key === "s" || e.key === "S" || e.key === "Escape") toggleScore();
+    if (e.code === "KeyS" || e.code === "Escape") toggleScore();
     return;
   }
 
   if (document.activeElement === input) {
+    // 日本語変換の確定 Enter は無視（Safari は isComposing が false になるため keyCode も見る）
+    if (e.isComposing || e.keyCode === 229) return;
     if (e.key === "Enter") {
       e.preventDefault();
       submitAnswer();
@@ -394,37 +421,16 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  switch (e.key) {
-    case "Enter":
-      e.preventDefault();
-      if (state.phase === "playing") input.focus();
-      break;
-    case "o": case "O":
-      e.preventDefault();
-      markCorrect();
-      break;
-    case " ":
-      e.preventDefault();
-      if (state.phase === "ready" || state.phase === "paused") startTimer();
-      else if (state.phase === "playing") pauseTimer();
-      break;
-    case "x": case "X":
-      e.preventDefault();
-      markWrong();
-      break;
-    case "Backspace":
-      e.preventDefault();
-      undo();
-      break;
-    case "n": case "N":
-      e.preventDefault();
-      if (state.phase === "result") nextRound();
-      break;
-    case "s": case "S":
-      e.preventDefault();
-      toggleScore();
-      break;
-  }
+  const action = KEYMAP[e.code];
+  if (!action) return;
+  e.preventDefault();
+  actions[action]();
+});
+
+// 画面下の操作ボタン（マウス・タッチ用）。フォーカスを奪わないようにして、Space の二重反応を防ぐ
+document.querySelectorAll("[data-action]").forEach((btn) => {
+  btn.addEventListener("mousedown", (e) => e.preventDefault());
+  btn.addEventListener("click", () => actions[btn.dataset.action]());
 });
 
 $("btn-start").addEventListener("click", startGame);

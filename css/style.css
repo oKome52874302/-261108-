@@ -161,7 +161,11 @@ html, body {
 
 .operator { margin-top: auto; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: .7; }
 .operator input { width: 50%; font-size: 20px; padding: 6px 12px; border-radius: 6px; border: none; font-family: inherit; }
-.keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; font-size: 14px; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.controls button { font-family: inherit; font-size: 13px; padding: 4px 10px; border-radius: 6px; border: 1px solid #333a66; background: rgba(10, 15, 44, .8); color: var(--muted); cursor: pointer; }
+.controls button:hover { color: #fff; border-color: var(--muted); }
+.controls .ctl-ok:hover { border-color: var(--ok); }
+.controls .ctl-ng:hover { border-color: var(--ng); }
 kbd { background: #333a66; border-radius: 4px; padding: 1px 6px; color: #fff; font-family: inherit; }
 
 body.flash-ng { animation: flashNg .4s; }
