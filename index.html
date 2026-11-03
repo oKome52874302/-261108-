@@ -23,9 +23,17 @@
 
     <div class="setup-section">
       <h2>お題</h2>
-      <p class="hint">1行に1問。<code>お題 | 回答例、回答例、…</code> の形式（回答例は省略可。判定役の参考としてラウンド終了後に表示）</p>
-      <textarea id="input-questions" rows="10" spellcheck="false"></textarea>
-      <p class="hint"><span id="q-count">0</span> 問</p>
+      <p class="hint">左に「お題」、右に「正解」を「、」区切りで書きます。正解に書いた答えは自動で○になり、書いていない答えは判定役が○×を決めます（正解は空欄でもOK）。</p>
+      <div class="q-head"><span>お題</span><span>正解（、区切り）</span></div>
+      <div id="question-list" class="question-list"></div>
+      <button id="btn-add-question" class="sub-btn">＋ お題を追加</button>
+      <span class="hint">全 <span id="q-count">0</span> 問</span>
+      <details class="bulk">
+        <summary>まとめて追加（スプレッドシートから貼り付け）</summary>
+        <p class="hint">1行に1問。スプレッドシートの「お題」「正解」の2列をコピーして貼り付けるか、<code>お題 | 正解、正解</code> の形で書きます。</p>
+        <textarea id="input-bulk" rows="5" spellcheck="false" placeholder="海に面していない都道府県 | 栃木、群馬、埼玉&#10;山手線の駅 | 東京、品川、渋谷"></textarea>
+        <button id="btn-bulk-add" class="sub-btn">この内容を追加</button>
+      </details>
     </div>
 
     <div class="setup-section">
@@ -48,6 +56,7 @@
           <input id="input-bonus" type="number" min="0" max="100" value="0">
         </label>
         <label class="check"><input id="input-shuffle" type="checkbox" checked> お題をシャッフル</label>
+        <label class="check"><input id="input-autojudge" type="checkbox" checked> 正解リストにある答えは自動で○</label>
         <label>音量
           <input id="input-volume" type="range" min="0" max="1" step="0.05" value="0.8">
         </label>
@@ -110,11 +119,12 @@
     <div id="banner" class="banner"></div>
 
     <footer class="operator">
-      <input id="input-answer" type="text" placeholder="回答を入力（任意）→ Enter で正解" autocomplete="off">
+      <input id="input-answer" type="text" placeholder="Enter で入力 → 答えを打って Enter で判定へ（入力は省略可）" autocomplete="off">
       <div class="keys">
         <span><kbd>Space</kbd> 開始/一時停止</span>
-        <span><kbd>Enter</kbd> 正解</span>
-        <span><kbd>X</kbd> / <kbd>Shift+Enter</kbd> 不正解（同じ人が考え直し）</span>
+        <span><kbd>Enter</kbd> 回答を入力</span>
+        <span><kbd>O</kbd> 正解</span>
+        <span><kbd>X</kbd> 不正解（同じ人が考え直し）</span>
         <span><kbd>Backspace</kbd> 取り消し</span>
         <span><kbd>N</kbd> 次へ</span>
         <span><kbd>S</kbd> スコア</span>

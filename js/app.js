@@ -13,6 +13,7 @@ const state = {
   answers: [],        // 正解した回答テキスト
   wrongs: [],         // 不正解 { slot, text }。同じ枠の人が考え直す
   history: [],        // 判定の履歴（"correct" | "wrong"）。取り消し用
+  pending: null,      // 入力済みで判定待ちの回答（null = なし）
   remainingMs: 0,
   endAt: 0,
   timerId: null,
@@ -67,6 +68,7 @@ function prepareRound() {
   state.answers = [];
   state.wrongs = [];
   state.history = [];
+  state.pending = null;
   state.remainingMs = state.settings.time * 1000;
   state.lastTickSec = null;
   Sound.resetBgm();
@@ -79,7 +81,6 @@ function startTimer() {
   Sound.startBgm();
   state.endAt = performance.now() + state.remainingMs;
   state.timerId = setInterval(updateTimer, 50);
-  $("input-answer").focus();
   render();
 }
 
@@ -144,16 +145,67 @@ function nextRound() {
 }
 
 // ---------- 判定 ----------
-function takeInput() {
+// 表記ゆれを吸収して比較する（全角半角・カタカナひらがな・空白・中黒・大文字小文字）
+function normalize(text) {
+  return text
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
+    .replace(/[\s・･]/g, "");
+}
+
+// 正解リストの1項目は「H 水素」（空白区切り）や「栃木（とちぎ）」（読み）のように別表記を含められる
+function alternatives(example) {
+  const parts = example.split(/[()（）\s]+/).filter(Boolean);
+  return [example, ...parts];
+}
+
+// 「栃木県」「渋谷駅」のように、よくある接尾語が付いていても正解扱いにする
+const SUFFIXES = ["県", "都", "府", "市", "区", "町", "村", "駅", "座"];
+
+// 一致する正解リストの番号（なければ -1）
+function exampleIndex(text) {
+  const n = normalize(text);
+  return currentQuestion().examples.findIndex((ex) =>
+    alternatives(ex).some((alt) => {
+      const a = normalize(alt);
+      return a && (n === a || SUFFIXES.some((suf) => n === a + suf));
+    }));
+}
+
+const matchesExample = (text) => exampleIndex(text) >= 0;
+
+// 既出判定：同じ表記か、正解リストの同じ項目に当たる答え（「栃木」と「栃木県」など）
+function isDuplicate(text) {
+  const idx = exampleIndex(text);
+  return state.answers.some((a) => normalize(a) === normalize(text) || (idx >= 0 && exampleIndex(a) === idx));
+}
+
+// 入力欄の回答を確定する。既出なら自動で×、正解リストにあれば自動で○、それ以外は判定待ち
+function submitAnswer() {
   const input = $("input-answer");
   const text = input.value.trim();
   input.value = "";
+  input.blur();
+  if (state.phase !== "playing" || !text) return;
+  state.pending = text;
+  if (isDuplicate(text)) markWrong();
+  else if (state.settings.autoJudge && matchesExample(text)) markCorrect();
+  else {
+    Sound.tick();
+    render();
+  }
+}
+
+function takePending() {
+  const text = state.pending || "";
+  state.pending = null;
   return text;
 }
 
 function markCorrect() {
   if (state.phase !== "playing") return;
-  state.answers.push(takeInput() || "○");
+  state.answers.push(takePending() || "○");
   state.history.push("correct");
   state.justFilled = true;
   if (isCleared()) {
@@ -168,7 +220,7 @@ function markCorrect() {
 // 不正解でも枠は進まず、同じ人が考え直す
 function markWrong() {
   if (state.phase !== "playing") return;
-  state.wrongs.push({ slot: state.answers.length, text: takeInput() });
+  state.wrongs.push({ slot: state.answers.length, text: takePending() });
   state.history.push("wrong");
   Sound.wrong();
   document.body.classList.remove("flash-ng");
@@ -183,6 +235,12 @@ const wrongsFor = (slot) => state.wrongs.filter((w) => w.slot === slot);
 
 // 判定ミスの取り消し（直前の判定を1つ戻す）
 function undo() {
+  // 判定待ちがあれば、まずそれを取り消す
+  if (state.pending !== null) {
+    state.pending = null;
+    render();
+    return;
+  }
   const last = state.history.pop();
   if (!last) return;
   if (last === "wrong") {
@@ -229,7 +287,9 @@ function render() {
   $("round-info").textContent = `第${state.round + 1}問　不正解 ${state.wrongs.length}`;
   const label = current || `${state.answers.length + 1}人目`;
   $("current-player").textContent = (state.phase === "playing" || state.phase === "paused") && !isCleared()
-    ? `回答者：${label}${retries ? `（考え直し ${retries}回目）` : ""}`
+    ? state.pending !== null
+      ? `判定中…（O：正解　X：不正解）`
+      : `回答者：${label}${retries ? `（考え直し ${retries}回目）` : ""}`
     : "";
   $("current-player").classList.toggle("retry", retries > 0);
 
@@ -252,6 +312,11 @@ function render() {
     el.innerHTML = `<span class="num">${i + 1}</span><span class="player"></span><span class="text"></span><span class="wrongs"></span>`;
     el.querySelector(".player").textContent = playerFor(team, i);
     el.querySelector(".text").textContent = ans || "";
+    if (!ans && i === state.answers.length && state.pending !== null) {
+      el.classList.add("pending");
+      el.querySelector(".text").textContent = `${state.pending}？`;
+      el.querySelector(".text").classList.add("pending-text");
+    }
     // 不正解だった回答を打ち消し線で表示（文字なしなら ✕ のみ）
     const wrongs = wrongsFor(i);
     if (wrongs.length && !ans) el.classList.add("retry");
@@ -272,7 +337,7 @@ function render() {
     banner.textContent = cleared ? "CLEAR!!" : "TIME UP";
     const info = document.createElement("div");
     info.className = "examples";
-    info.textContent = `+${roundPoints()}点　｜　回答例: ${q.examples.join("、")}　｜　N で次へ`;
+    info.textContent = `+${roundPoints()}点　｜　正解リスト: ${q.examples.join("、") || "なし"}　｜　N で次へ`;
     banner.appendChild(info);
   } else if (state.phase === "paused") {
     banner.textContent = "一時停止中";
@@ -305,28 +370,39 @@ function toggleScore() {
 }
 
 // ---------- キー操作 ----------
-// 回答入力欄に文字があるときは文字入力を優先し、空のときだけショートカットとして扱う
+// 入力欄にフォーカスがあるときは文字入力を優先し、Enter（判定へ送る）と Esc（入力をやめる）だけ扱う
+// 判定（O / X）は入力欄の外で行うので、答えを打つだけで正解になることはない
 document.addEventListener("keydown", (e) => {
   if (state.phase === "setup") return;
   const input = $("input-answer");
-  const typing = document.activeElement === input && input.value !== "";
-  if (e.isComposing) return; // 日本語変換中の Enter は無視
+  // 日本語変換の確定 Enter は無視（Safari は isComposing が false になるため keyCode も見る）
+  if (e.isComposing || e.keyCode === 229) return;
 
   if ($("screen-score").classList.contains("active")) {
     if (e.key === "s" || e.key === "S" || e.key === "Escape") toggleScore();
     return;
   }
 
-  // Shift+Enter は入力中の回答ごと不正解にする
-  if (e.key === "Enter") {
-    e.preventDefault();
-    if (e.shiftKey) markWrong();
-    else markCorrect();
+  if (document.activeElement === input) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitAnswer();
+    } else if (e.key === "Escape") {
+      input.value = "";
+      input.blur();
+    }
     return;
   }
-  if (typing) return;
 
   switch (e.key) {
+    case "Enter":
+      e.preventDefault();
+      if (state.phase === "playing") input.focus();
+      break;
+    case "o": case "O":
+      e.preventDefault();
+      markCorrect();
+      break;
     case " ":
       e.preventDefault();
       if (state.phase === "ready" || state.phase === "paused") startTimer();

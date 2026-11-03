@@ -50,7 +50,13 @@ html, body {
 .team-card-head { display: flex; gap: 8px; }
 .team-name-input { flex: 1; min-width: 0; }
 .team-card input, .team-card textarea, #input-questions { font-size: 16px; padding: 6px 10px; border-radius: 6px; border: none; font-family: inherit; }
-#input-questions { width: 100%; }
+.q-head, .question-row { display: grid; grid-template-columns: 2fr 3fr 36px; gap: 8px; }
+.q-head { font-size: 14px; color: var(--muted); font-weight: 800; margin-bottom: 4px; }
+.question-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.question-row input, .bulk textarea { font-size: 16px; padding: 6px 10px; border-radius: 6px; border: none; font-family: inherit; min-width: 0; }
+.bulk { margin-top: 12px; }
+.bulk summary { cursor: pointer; color: var(--muted); font-weight: 800; }
+.bulk textarea { width: 100%; display: block; margin-bottom: 8px; }
 .remove-btn { border: none; border-radius: 6px; background: #333a66; color: #fff; font-size: 18px; width: 36px; cursor: pointer; }
 .remove-btn:hover { background: var(--ng); }
 .sub-btn { display: inline-block; font-family: inherit; font-size: 16px; padding: 8px 18px; border: 2px solid var(--muted); border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
@@ -136,6 +142,9 @@ html, body {
 }
 .slot.filled .num { background: radial-gradient(circle at 35% 30%, #fff, #ffe7a0 60%, #ffb000); }
 .slot.filled .player { color: #4a1b00; text-shadow: none; }
+/* 判定待ち */
+.slot.pending { border-color: #4fc3ff; box-shadow: 0 0 28px #4fc3ff, 0 6px 0 #05070f; animation: pendingPulse 1s infinite; }
+.slot .pending-text { color: #bfe9ff; }
 .slot.pop { animation: pop .3s; }
 .slot.shake { animation: shake .4s; }
 
@@ -174,6 +183,7 @@ body.quake .screen.active { animation: quake .5s; }
 .score-list { font-family: var(--telop); font-size: 4vw; width: 60%; text-shadow: var(--outline); }
 .score-list li { display: flex; justify-content: space-between; border-bottom: 2px solid var(--panel); padding: 1vh 0; }
 
+@keyframes pendingPulse { 50% { box-shadow: 0 0 8px #4fc3ff, 0 6px 0 #05070f; } }
 @keyframes shake { 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
 @keyframes pulse { 50% { transform: scale(1.12); } }
 @keyframes pop { 0% { transform: scale(.6); } 70% { transform: scale(1.1); } 100% { transform: scale(1); } }
