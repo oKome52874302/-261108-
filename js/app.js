@@ -288,7 +288,7 @@ function render() {
   const label = current || `${state.answers.length + 1}人目`;
   $("current-player").textContent = (state.phase === "playing" || state.phase === "paused") && !isCleared()
     ? state.pending !== null
-      ? `判定中…（O：正解　X：不正解）`
+      ? `判定中…（↑：正解　↓：不正解）`
       : `回答者：${label}${retries ? `（考え直し ${retries}回目）` : ""}`
     : "";
   $("current-player").classList.toggle("retry", retries > 0);
@@ -337,7 +337,7 @@ function render() {
     banner.textContent = cleared ? "CLEAR!!" : "TIME UP";
     const info = document.createElement("div");
     info.className = "examples";
-    info.textContent = `+${roundPoints()}点　｜　正解リスト: ${q.examples.join("、") || "なし"}　｜　N で次へ`;
+    info.textContent = `+${roundPoints()}点　｜　正解リスト: ${q.examples.join("、") || "なし"}　｜　→ で次へ`;
     banner.appendChild(info);
   } else if (state.phase === "paused") {
     banner.textContent = "一時停止中";
@@ -384,36 +384,53 @@ const actions = {
   score: toggleScore,
 };
 
-// 判定ショートカットは e.code（物理キー）で見る。
-// e.key だと日本語入力がオンのとき "Process" になり、どのキーも効かなくなるため
+// ショートカットは文字の出ないキーだけにする（文字キーは答えの入力に使うため）。
+// e.key ではなく e.code（物理キー）で見るのは、日本語入力がオンだと e.key が "Process" になるため
 const KEYMAP = {
   Space: "toggle",
   Enter: "answer",
   NumpadEnter: "answer",
-  KeyO: "correct",
-  KeyX: "wrong",
+  ArrowUp: "correct",
+  ArrowDown: "wrong",
   Backspace: "undo",
-  KeyN: "next",
-  KeyS: "score",
+  ArrowRight: "next",
+  Tab: "score",
 };
 
-// 入力欄にフォーカスがあるときは文字入力を優先し、Enter（判定へ送る）と Esc（入力をやめる）だけ扱う
-// 判定（O / X）は入力欄の外で行うので、答えを打つだけで正解になることはない
+// 入力欄から直接判定する（打った答えをそのまま○／×にする）
+function judgeFromInput(correct) {
+  const input = $("input-answer");
+  const text = input.value.trim();
+  input.value = "";
+  input.blur();
+  if (state.phase !== "playing") return;
+  if (text) state.pending = text;
+  if (correct) markCorrect();
+  else markWrong();
+}
+
 document.addEventListener("keydown", (e) => {
   if (state.phase === "setup") return;
   const input = $("input-answer");
 
   if ($("screen-score").classList.contains("active")) {
-    if (e.code === "KeyS" || e.code === "Escape") toggleScore();
+    if (e.code === "Tab" || e.code === "Escape") {
+      e.preventDefault();
+      toggleScore();
+    }
     return;
   }
 
+  // 入力欄では文字入力を優先。Enter で判定へ送り、↑↓ でその答えを直接○×、Esc で入力をやめる
   if (document.activeElement === input) {
-    // 日本語変換の確定 Enter は無視（Safari は isComposing が false になるため keyCode も見る）
+    // 日本語変換中（確定の Enter や候補選択の ↑↓）は触らない。Safari は isComposing が false になるため keyCode も見る
     if (e.isComposing || e.keyCode === 229) return;
     if (e.key === "Enter") {
       e.preventDefault();
       submitAnswer();
+    } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      judgeFromInput(e.key === "ArrowUp");
     } else if (e.key === "Escape") {
       input.value = "";
       input.blur();
@@ -422,9 +439,16 @@ document.addEventListener("keydown", (e) => {
   }
 
   const action = KEYMAP[e.code];
-  if (!action) return;
-  e.preventDefault();
-  actions[action]();
+  if (action) {
+    e.preventDefault();
+    actions[action]();
+    return;
+  }
+
+  // 回答中に文字キーを押したら、そのまま入力欄に打てるようにする
+  if (state.phase === "playing" && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key.length === 1 || e.key === "Process")) {
+    input.focus();
+  }
 });
 
 // 画面下の操作ボタン（マウス・タッチ用）。フォーカスを奪わないようにして、Space の二重反応を防ぐ
