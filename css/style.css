@@ -104,6 +104,8 @@ body.in-game #btn-start { font-size: 18px; padding: 10px 30px; background: trans
 }
 .timer.danger { color: var(--ng); animation: pulse 1s infinite; }
 .timer.paused { opacity: .5; }
+/* 入力・判定中で止まっているとき */
+.timer.hold { color: #4fc3ff; animation: none; }
 #spark.lit .spark-core { animation: spark .15s infinite alternate; transform-box: fill-box; transform-origin: center; }
 
 .current-player { font-family: var(--telop); font-size: 2.8vw; color: var(--accent); text-shadow: var(--outline); min-height: 4vw; margin: .5vh 0 1vh; }

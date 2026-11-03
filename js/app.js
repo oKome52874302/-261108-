@@ -23,6 +23,7 @@ const state = {
   endAt: 0,
   timerId: null,
   lastTickSec: null,
+  holdStart: null,    // 入力・判定中でタイマーを止めた時刻（止めていなければ null）
   justFilled: false,  // 直前に正解した枠だけアニメーションさせる
 };
 
@@ -145,20 +146,39 @@ function startTimer() {
   state.phase = "playing";
   Sound.startBgm();
   state.endAt = performance.now() + state.remainingMs;
+  state.holdStart = null;
   state.timerId = setInterval(updateTimer, 50);
   render();
 }
 
+// 残り時間。入力・判定中で止めている間は減らない
+const remainingNow = () => Math.max(0, state.endAt - (state.holdStart ?? performance.now()));
+
 function pauseTimer() {
   clearInterval(state.timerId);
-  state.remainingMs = Math.max(0, state.endAt - performance.now());
+  state.remainingMs = remainingNow();
+  state.holdStart = null;
   state.phase = "paused";
   Sound.stopBgm();
   render();
 }
 
+// 回答欄に文字がある間と判定待ちの間はタイマーを止める（設定でオフにできる）。
+// 操作役が打ち込む時間でチームが損をしないようにするため
+function syncHold() {
+  const hold = state.phase === "playing" && state.settings.holdWhileJudging
+    && ($("input-answer").value !== "" || state.pending !== null);
+  if (hold && state.holdStart === null) {
+    state.holdStart = performance.now();
+  } else if (!hold && state.holdStart !== null) {
+    state.endAt += performance.now() - state.holdStart;
+    state.holdStart = null;
+  }
+  $("timer").classList.toggle("hold", state.holdStart !== null);
+}
+
 function updateTimer() {
-  state.remainingMs = Math.max(0, state.endAt - performance.now());
+  state.remainingMs = remainingNow();
   const sec = Math.ceil(state.remainingMs / 1000);
   if (sec <= 5 && sec > 0 && sec !== state.lastTickSec) Sound.tick();
   Sound.setIntense(sec <= 5);
@@ -391,11 +411,12 @@ function renderTimer() {
   const tip = fuse.getPointAtLength(len * ratio);
   const spark = $("spark");
   spark.setAttribute("transform", `translate(${tip.x} ${tip.y})`);
-  spark.classList.toggle("lit", state.phase === "playing");
+  spark.classList.toggle("lit", state.phase === "playing" && state.holdStart === null);
   spark.style.display = ratio > 0 ? "" : "none";
 }
 
 function render() {
+  syncHold();
   const team = currentTeam();
   const q = currentQuestion();
   const { target } = state.settings;
@@ -582,7 +603,11 @@ document.addEventListener("keydown", (e) => {
     case "Tab":
       return run(actions.score);
     case "Escape":
-      return run(() => (empty ? actions.settings() : (input.value = "")));
+      return run(() => {
+        if (empty) return actions.settings();
+        input.value = "";
+        syncHold();
+      });
     case "Space":
       if (empty) run(actions.toggle);
       return;
@@ -602,6 +627,7 @@ $("input-answer").addEventListener("input", (e) => {
     input.value = "";
     actions.toggle();
   }
+  syncHold();
 });
 
 // 画面下の操作ボタン（マウス・タッチ用）。フォーカスを奪わないようにして、Space の二重反応を防ぐ
