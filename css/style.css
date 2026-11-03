@@ -70,6 +70,12 @@ html, body {
   margin-top: 4vh; font-family: var(--telop); font-size: 30px; padding: 14px 60px; border: 3px solid #000; border-radius: 14px; cursor: pointer;
   background: linear-gradient(#fff07a, #ffb000); color: #000; box-shadow: 0 6px 0 #a35a00, 0 10px 20px rgba(0, 0, 0, .5);
 }
+.start-actions { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+/* ゲーム中に設定画面へ戻ったときだけ表示 */
+.resume-btn, .ingame-note { display: none; }
+body.in-game .resume-btn { display: inline-block; position: fixed; right: 3vw; bottom: 3vh; z-index: 10; margin: 0; font-size: 22px; padding: 12px 32px; background: linear-gradient(#9ff7c0, #2ecc71); box-shadow: 0 6px 0 #1b7a43, 0 10px 20px rgba(0, 0, 0, .5); }
+body.in-game .ingame-note { display: block; background: #2a1d00; border: 2px solid var(--accent); border-radius: 10px; padding: 10px 16px; color: var(--accent); font-weight: 800; max-width: 1100px; width: 100%; }
+body.in-game #btn-start { font-size: 18px; padding: 10px 30px; background: transparent; color: var(--muted); border-color: var(--muted); box-shadow: none; }
 .big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a35a00; }
 .hint { color: var(--muted); margin-top: 2vh; }
 
@@ -78,6 +84,9 @@ html, body {
 .header-side { display: flex; flex-direction: column; gap: .5vh; }
 .header-side.right { align-items: flex-end; }
 .mode-name { font-family: var(--telop); font-size: 2.2vw; font-style: italic; color: #ffb000; text-shadow: var(--outline); }
+.mini-score { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 1.4vw; font-weight: 800; color: #c7cff5; }
+.mini-score .now { color: var(--accent); }
+.mini-score .goal { color: var(--muted); font-size: 1.1vw; }
 .presets { display: flex; gap: 8px; }
 .preset-btn { font-family: inherit; font-size: 14px; padding: 4px 10px; border-radius: 6px; border: 2px solid var(--muted); background: transparent; color: var(--text); cursor: pointer; }
 .preset-btn:hover { border-color: var(--accent); }
@@ -181,6 +190,18 @@ body.quake .screen.active { animation: quake .5s; }
 .explosion.show .blast { animation: blast 1s ease-out forwards; }
 .blast-text { position: relative; font-family: var(--telop); font-size: 14vw; color: #fff; text-shadow: var(--outline), 0 0 40px #ff3b00; transform: rotate(-8deg); }
 .explosion.show .blast-text { animation: pop .4s; }
+
+/* ---- 試合終了画面 ---- */
+#screen-final { justify-content: center; gap: 2vh; }
+.final-reason { font-size: 2vw; font-weight: 800; color: var(--muted); }
+.final-title { font-family: var(--telop); font-size: 4vw; color: #fff; text-shadow: var(--outline); }
+.final-winner {
+  font-family: var(--telop); font-size: 9vw; text-align: center; line-height: 1.1;
+  background: linear-gradient(#fff6b0, #ffcc00 45%, #ff7a00 55%, #ff3b00);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(5px 5px 0 #000); animation: pop .6s;
+}
+.final-actions { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
 
 /* ---- スコア画面 ---- */
 #screen-score h2 { font-family: var(--telop); font-weight: 400; font-size: 5vw; color: var(--accent); text-shadow: var(--outline); }

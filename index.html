@@ -7,12 +7,27 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1p:wght@500;800&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=7">
+  <link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
   <!-- 設定画面 -->
   <section id="screen-setup" class="screen active">
     <h1 id="logo" class="logo">FIVE BOMBER</h1>
+    <p class="ingame-note">ゲームは一時停止中です。設定を変えて「ゲームに戻る」で続きから再開できます（スコアはそのまま）。</p>
+
+    <div class="setup-section">
+      <h2>勝敗の決め方</h2>
+      <p class="hint">1ターン ＝ 全チームが1問ずつ答えること。0 にするとその条件は使いません（両方 0 なら終わりなし）。ゲーム中も変更できます。</p>
+      <div class="setup-grid">
+        <label>ターン数（このターン数で終了）
+          <input id="input-turns" type="number" min="0" max="50" value="3">
+        </label>
+        <label>目標点（先に到達したチームの勝ち）
+          <input id="input-goal" type="number" min="0" max="9999" value="0">
+        </label>
+        <label class="check"><input id="input-finish-turn" type="checkbox" checked> 目標点に達してもそのターンは最後まで行う（後攻にもチャンス）</label>
+      </div>
+    </div>
 
     <div class="setup-section">
       <h2>チーム・プレイヤー</h2>
@@ -71,7 +86,10 @@
     </div>
     <p class="hint">入力内容はこのブラウザに自動保存されます。別のPCで使うときは「書き出し」したファイルを持っていき「読み込み」してください。</p>
 
-    <button id="btn-start" class="big-btn">ゲーム開始</button>
+    <div class="start-actions">
+      <button id="btn-resume" class="big-btn resume-btn">ゲームに戻る（続きから）</button>
+      <button id="btn-start" class="big-btn">ゲーム開始</button>
+    </div>
   </section>
 
   <!-- ゲーム画面 -->
@@ -107,6 +125,7 @@
       </div>
       <div class="header-side right">
         <div id="mode-name" class="mode-name"></div>
+        <div id="mini-score" class="mini-score"></div>
       </div>
     </header>
 
@@ -128,8 +147,21 @@
         <button type="button" data-action="undo"><kbd>Backspace</kbd> 取り消し</button>
         <button type="button" data-action="next"><kbd>→</kbd> 次へ</button>
         <button type="button" data-action="score"><kbd>Tab</kbd> スコア</button>
+        <button type="button" data-action="settings"><kbd>Esc</kbd> ⚙ 設定に戻る</button>
       </div>
     </footer>
+  </section>
+
+  <!-- 試合終了画面 -->
+  <section id="screen-final" class="screen">
+    <div id="final-reason" class="final-reason"></div>
+    <div id="final-title" class="final-title"></div>
+    <div id="final-winner" class="final-winner"></div>
+    <ol id="final-list" class="score-list"></ol>
+    <div class="final-actions">
+      <button type="button" class="sub-btn" data-action="settings">⚙ 設定に戻る（延長・新しいゲーム）</button>
+      <button type="button" class="sub-btn" data-action="continue">このまま続ける</button>
+    </div>
   </section>
 
   <!-- 爆発演出 -->
@@ -143,9 +175,9 @@
     <button type="button" class="sub-btn" data-action="score">ゲームに戻る</button>
   </section>
 
-  <script src="data/questions.js?v=7"></script>
-  <script src="js/sound.js?v=7"></script>
-  <script src="js/setup.js?v=7"></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="data/questions.js?v=8"></script>
+  <script src="js/sound.js?v=8"></script>
+  <script src="js/setup.js?v=8"></script>
+  <script src="js/app.js?v=8"></script>
 </body>
 </html>
