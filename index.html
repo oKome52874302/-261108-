@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1p:wght@500;800&display=swap">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
   <!-- 設定画面 -->
@@ -119,15 +119,15 @@
     <div id="banner" class="banner"></div>
 
     <footer class="operator">
-      <input id="input-answer" type="text" placeholder="Enter で入力 → 答えを打って Enter で判定へ（入力は省略可）" autocomplete="off">
-      <div class="keys">
-        <span><kbd>Space</kbd> 開始/一時停止</span>
-        <span><kbd>Enter</kbd> 回答を入力</span>
-        <span><kbd>O</kbd> 正解</span>
-        <span><kbd>X</kbd> 不正解（同じ人が考え直し）</span>
-        <span><kbd>Backspace</kbd> 取り消し</span>
-        <span><kbd>N</kbd> 次へ</span>
-        <span><kbd>S</kbd> スコア</span>
+      <input id="input-answer" type="text" placeholder="答えを打って Enter で判定へ（Esc で入力をやめる・入力は省略可）" autocomplete="off">
+      <div class="controls">
+        <button type="button" data-action="toggle"><kbd>Space</kbd> 開始/一時停止</button>
+        <button type="button" data-action="answer"><kbd>Enter</kbd> 回答を入力</button>
+        <button type="button" data-action="correct" class="ctl-ok"><kbd>O</kbd> 正解</button>
+        <button type="button" data-action="wrong" class="ctl-ng"><kbd>X</kbd> 不正解</button>
+        <button type="button" data-action="undo"><kbd>Backspace</kbd> 取り消し</button>
+        <button type="button" data-action="next"><kbd>N</kbd> 次へ</button>
+        <button type="button" data-action="score"><kbd>S</kbd> スコア</button>
       </div>
     </footer>
   </section>
@@ -140,11 +140,12 @@
     <h2>スコア</h2>
     <ol id="score-list" class="score-list"></ol>
     <p class="hint"><kbd>S</kbd> / <kbd>Esc</kbd> でゲームに戻る</p>
+    <button type="button" class="sub-btn" data-action="score">ゲームに戻る</button>
   </section>
 
-  <script src="data/questions.js"></script>
-  <script src="js/sound.js"></script>
-  <script src="js/setup.js"></script>
-  <script src="js/app.js"></script>
+  <script src="data/questions.js?v=6"></script>
+  <script src="js/sound.js?v=6"></script>
+  <script src="js/setup.js?v=6"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>
