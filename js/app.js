@@ -1,5 +1,6 @@
 // ファイブボンバー 本体
-// 画面の流れ: setup → [ready → playing ⇄ paused → result] × ラウンド数
+// 画面の流れ: setup → [ready → playing ⇄ paused → result] × ラウンド数 → final（勝敗決定）
+// ゲーム中はいつでも設定画面に戻り、設定を変えて続きから再開できる
 // 正誤判定は人が行い、キーボードで入力する
 
 const $ = (id) => document.getElementById(id);
@@ -7,8 +8,12 @@ const $ = (id) => document.getElementById(id);
 const state = {
   teams: [],          // { name, players, score, offset }  offset: 次に答えるプレイヤーの位置
   settings: { time: 30, target: 5, point: 10, bonus: 0 },
-  questions: [],
-  round: 0,           // 何ラウンド目か（0始まり）
+  questions: [],       // 全お題
+  queue: [],           // これから出すお題
+  used: new Set(),     // 出題済みのお題（設定変更後も重複させないため）
+  question: null,      // 現在のお題
+  started: false,      // ゲーム中かどうか（スコアを持っている）
+  round: 0,           // 何ラウンド目か（0始まり）。全チームが1回ずつ答えると1ターン
   phase: "setup",     // setup | ready | playing | paused | result
   answers: [],        // 正解した回答テキスト
   wrongs: [],         // 不正解 { slot, text }。同じ枠の人が考え直す
@@ -22,7 +27,8 @@ const state = {
 };
 
 const currentTeam = () => state.teams[state.round % state.teams.length];
-const currentQuestion = () => state.questions[state.round % state.questions.length];
+const currentQuestion = () => state.question;
+const currentTurn = () => Math.floor(state.round / state.teams.length) + 1;
 
 // i 番目の枠を担当するプレイヤー名（プレイヤー未登録なら空文字）
 function playerFor(team, i) {
@@ -42,17 +48,74 @@ function startGame() {
   const data = Setup.read();
   if (data.teams.length === 0) return alert("チームを1つ以上追加してください");
   if (data.questions.length === 0) return alert("お題を1問以上入力してください");
+  if (state.started && !confirm("スコアをリセットして新しいゲームを始めます。よろしいですか？\n（続きから遊ぶときは「ゲームに戻る」）")) return;
 
   state.teams = data.teams.map((t) => ({ ...t, score: 0, offset: 0 }));
-  state.settings = data.settings;
-  Sound.setVolume(data.settings.volume);
-  Sound.setBgmEnabled(data.settings.bgm);
+  applySettings(data.settings);
   state.questions = data.questions;
-  if (data.settings.shuffle) shuffle(state.questions);
+  state.used = new Set();
+  state.queue = [];
   state.round = 0;
+  state.started = true;
 
+  document.body.classList.add("in-game");
   showScreen("game");
   prepareRound();
+}
+
+function applySettings(settings) {
+  state.settings = settings;
+  Sound.setVolume(settings.volume);
+  Sound.setBgmEnabled(settings.bgm);
+}
+
+// 未出題のお題から次の1問を選ぶ。すべて出し終えたら最初から
+function pickQuestion() {
+  if (state.queue.length === 0) {
+    state.queue = state.questions.filter((q) => !state.used.has(q.theme));
+    if (state.queue.length === 0) {
+      state.used.clear();
+      state.queue = [...state.questions];
+    }
+    if (state.settings.shuffle) shuffle(state.queue);
+  }
+  state.question = state.queue.shift();
+  state.used.add(state.question.theme);
+}
+
+// ---------- ゲーム中の設定変更 ----------
+function backToSetup() {
+  if (!state.started) return;
+  if (state.phase === "playing") pauseTimer();
+  showScreen("setup");
+  window.scrollTo(0, 0);
+}
+
+// 設定画面で変えた内容を反映して、続きから再開する（スコア・回答順はそのまま）
+function resumeGame() {
+  const data = Setup.read();
+  if (data.questions.length === 0) return alert("お題を1問以上入力してください");
+  applySettings(data.settings);
+
+  // チームは名前とプレイヤーだけ反映（増減は新しいゲームで）
+  if (data.teams.length !== state.teams.length) {
+    alert("チーム数の変更は「ゲーム開始」で新しいゲームを始めたときに反映されます。名前とプレイヤーだけ反映します。");
+  }
+  state.teams.forEach((t, i) => {
+    if (data.teams[i]) Object.assign(t, { name: data.teams[i].name, players: data.teams[i].players });
+  });
+
+  // お題は未出題のものを出し直す。まだお題を開いていなければ、今のお題も選び直す
+  state.questions = data.questions;
+  state.queue = [];
+  if (state.phase === "ready") {
+    state.used.delete(state.question.theme);
+    pickQuestion();
+    state.remainingMs = state.settings.time * 1000;
+  }
+
+  showScreen("game");
+  render();
 }
 
 function shuffle(arr) {
@@ -64,6 +127,7 @@ function shuffle(arr) {
 
 // ---------- ラウンド制御 ----------
 function prepareRound() {
+  pickQuestion();
   state.phase = "ready";
   state.answers = [];
   state.wrongs = [];
@@ -140,8 +204,36 @@ function nextRound() {
   // 次回は今回答えた人の続きから。時間切れなら詰まった人も「答えた」扱いで次の人へ
   const answered = Math.min(state.settings.target, state.answers.length + (isCleared() ? 0 : 1));
   team.offset += answered;
+  const result = checkEnd();
   state.round++;
   prepareRound();
+  if (result) showFinal(result);
+}
+
+// 勝敗の判定。ラウンドの得点を確定した直後に呼ぶ
+function checkEnd() {
+  const { maxTurns, goalPoints, finishTurn } = state.settings;
+  const completed = state.round + 1;
+  const turnDone = completed % state.teams.length === 0;
+  const turns = Math.floor(completed / state.teams.length);
+  if (goalPoints > 0 && state.teams.some((t) => t.score >= goalPoints) && (!finishTurn || turnDone)) {
+    return `${goalPoints}点に到達`;
+  }
+  if (maxTurns > 0 && turnDone && turns >= maxTurns) return `${turns}ターン終了`;
+  return null;
+}
+
+function showFinal(reason) {
+  const ranking = [...state.teams].sort((a, b) => b.score - a.score);
+  const top = ranking[0].score;
+  const winners = ranking.filter((t) => t.score === top);
+  $("final-reason").textContent = reason;
+  $("final-title").textContent = winners.length > 1 ? "引き分け！" : "優勝";
+  $("final-winner").textContent = winners.map((t) => t.name).join("・");
+  fillScoreList($("final-list"), ranking);
+  $("explosion").classList.remove("show"); // 直前の時間切れ演出が勝者発表に重ならないように
+  Sound.clear();
+  showScreen("final");
 }
 
 // ---------- 判定 ----------
@@ -284,7 +376,9 @@ function render() {
   $("mode-name").textContent = Setup.modeName(target).en;
   const current = state.phase === "playing" || state.phase === "paused" ? playerFor(team, state.answers.length) : "";
   const retries = wrongsFor(state.answers.length).length;
-  $("round-info").textContent = `第${state.round + 1}問　不正解 ${state.wrongs.length}`;
+  const { maxTurns, goalPoints } = state.settings;
+  $("round-info").textContent = `第${currentTurn()}ターン${maxTurns ? ` / ${maxTurns}` : ""}　不正解 ${state.wrongs.length}`;
+  renderMiniScore(team, goalPoints);
   const label = current || `${state.answers.length + 1}人目`;
   $("current-player").textContent = (state.phase === "playing" || state.phase === "paused") && !isCleared()
     ? state.pending !== null
@@ -346,17 +440,36 @@ function render() {
   renderTimer();
 }
 
-function renderScore() {
-  const list = $("score-list");
+function fillScoreList(list, teams) {
   list.innerHTML = "";
-  [...state.teams]
-    .sort((a, b) => b.score - a.score)
-    .forEach((t) => {
-      const li = document.createElement("li");
-      li.innerHTML = `<span></span><span>${t.score}点</span>`;
-      li.firstChild.textContent = t.name;
-      list.appendChild(li);
-    });
+  teams.forEach((t) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span></span><span>${t.score}点</span>`;
+    li.firstChild.textContent = t.name;
+    list.appendChild(li);
+  });
+}
+
+function renderScore() {
+  fillScoreList($("score-list"), [...state.teams].sort((a, b) => b.score - a.score));
+}
+
+// ゲーム画面右上の小さなスコア表
+function renderMiniScore(current, goalPoints) {
+  const box = $("mini-score");
+  box.innerHTML = "";
+  state.teams.forEach((t) => {
+    const row = document.createElement("div");
+    row.textContent = `${t.name} ${t.score}点`;
+    if (t === current) row.className = "now";
+    box.appendChild(row);
+  });
+  if (goalPoints) {
+    const goal = document.createElement("div");
+    goal.className = "goal";
+    goal.textContent = `目標 ${goalPoints}点`;
+    box.appendChild(goal);
+  }
 }
 
 function toggleScore() {
@@ -382,6 +495,8 @@ const actions = {
   undo,
   next() { if (state.phase === "result") nextRound(); },
   score: toggleScore,
+  settings: backToSetup,
+  continue() { showScreen("game"); render(); },
 };
 
 // ショートカットは文字の出ないキーだけにする（文字キーは答えの入力に使うため）。
@@ -395,6 +510,7 @@ const KEYMAP = {
   Backspace: "undo",
   ArrowRight: "next",
   Tab: "score",
+  Escape: "settings",
 };
 
 // 入力欄から直接判定する（打った答えをそのまま○／×にする）
@@ -410,7 +526,8 @@ function judgeFromInput(correct) {
 }
 
 document.addEventListener("keydown", (e) => {
-  if (state.phase === "setup") return;
+  // 設定画面・試合終了画面では文字入力やボタン操作を優先
+  if ($("screen-setup").classList.contains("active") || $("screen-final").classList.contains("active")) return;
   const input = $("input-answer");
 
   if ($("screen-score").classList.contains("active")) {
@@ -458,4 +575,5 @@ document.querySelectorAll("[data-action]").forEach((btn) => {
 });
 
 $("btn-start").addEventListener("click", startGame);
+$("btn-resume").addEventListener("click", resumeGame);
 Setup.init();

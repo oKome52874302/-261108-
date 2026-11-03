@@ -12,7 +12,7 @@ const Setup = (() => {
         { name: "Bチーム", players: [] },
       ],
       questions: (window.QUESTIONS || []).map((q) => ({ theme: q.theme, examples: q.examples || [] })),
-      settings: { time: 30, target: 5, point: 10, bonus: 0, shuffle: true, autoJudge: true, bgm: true, volume: 0.8 },
+      settings: { time: 30, target: 5, point: 10, bonus: 0, maxTurns: 3, goalPoints: 0, finishTurn: true, shuffle: true, autoJudge: true, bgm: true, volume: 0.8 },
     };
   }
 
@@ -100,6 +100,9 @@ const Setup = (() => {
     $("input-target").value = data.settings.target;
     $("input-point").value = data.settings.point;
     $("input-bonus").value = data.settings.bonus;
+    $("input-turns").value = data.settings.maxTurns;
+    $("input-goal").value = data.settings.goalPoints;
+    $("input-finish-turn").checked = data.settings.finishTurn;
     $("input-shuffle").checked = data.settings.shuffle;
     $("input-autojudge").checked = data.settings.autoJudge;
     $("input-bgm").checked = data.settings.bgm;
@@ -121,6 +124,9 @@ const Setup = (() => {
         target: Number($("input-target").value) || 5,
         point: Number($("input-point").value) || 0,
         bonus: Number($("input-bonus").value) || 0,
+        maxTurns: Math.max(0, Number($("input-turns").value) || 0),
+        goalPoints: Math.max(0, Number($("input-goal").value) || 0),
+        finishTurn: $("input-finish-turn").checked,
         shuffle: $("input-shuffle").checked,
         autoJudge: $("input-autojudge").checked,
         bgm: $("input-bgm").checked,
