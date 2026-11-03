@@ -337,7 +337,7 @@ function render() {
     banner.textContent = cleared ? "CLEAR!!" : "TIME UP";
     const info = document.createElement("div");
     info.className = "examples";
-    info.textContent = `+${roundPoints()}点　｜　回答例: ${q.examples.join("、")}　｜　N で次へ`;
+    info.textContent = `+${roundPoints()}点　｜　正解リスト: ${q.examples.join("、") || "なし"}　｜　N で次へ`;
     banner.appendChild(info);
   } else if (state.phase === "paused") {
     banner.textContent = "一時停止中";
