@@ -12,24 +12,45 @@ const Setup = (() => {
         { name: "Bチーム", players: [] },
       ],
       questions: (window.QUESTIONS || []).map((q) => ({ theme: q.theme, examples: q.examples || [] })),
-      settings: { time: 30, target: 5, point: 10, bonus: 0, shuffle: true, bgm: true, volume: 0.8 },
+      settings: { time: 30, target: 5, point: 10, bonus: 0, shuffle: true, autoJudge: true, bgm: true, volume: 0.8 },
     };
   }
 
-  // ---------- お題テキスト ⇄ データ ----------
-  // 1行 = 「お題 | 回答例、回答例」。区切りは半角・全角の | どちらでも可
-  function parseQuestions(text) {
+  // ---------- お題 ----------
+  const splitAnswers = (text) => text.split(/[、,，]/).map((s) => s.trim()).filter(Boolean);
+
+  // まとめて追加用: 1行 = 「お題 | 正解、正解」またはスプレッドシートの2列（タブ区切り）
+  function parseBulk(text) {
     return text.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
-      const [theme, rest = ""] = line.split(/\s*[|｜]\s*/, 2);
-      const examples = rest.split(/[、,，]/).map((s) => s.trim()).filter(Boolean);
-      return { theme, examples };
+      const [theme, rest = ""] = line.split(/\s*[|｜\t]\s*/, 2);
+      return { theme, examples: splitAnswers(rest) };
     });
   }
 
-  function formatQuestions(questions) {
-    return questions
-      .map((q) => (q.examples.length ? `${q.theme} | ${q.examples.join("、")}` : q.theme))
-      .join("\n");
+  function addQuestionRow(q) {
+    const row = document.createElement("div");
+    row.className = "question-row";
+    row.innerHTML = `
+      <input class="q-theme" type="text" placeholder="例: 海に面していない都道府県">
+      <input class="q-answers" type="text" placeholder="例: 栃木、群馬、埼玉">
+      <button class="remove-btn" title="このお題を削除">×</button>`;
+    row.querySelector(".q-theme").value = q.theme;
+    row.querySelector(".q-answers").value = q.examples.join("、");
+    row.querySelector(".remove-btn").addEventListener("click", () => {
+      row.remove();
+      save();
+    });
+    $("question-list").appendChild(row);
+    return row;
+  }
+
+  function readQuestions() {
+    return [...document.querySelectorAll(".question-row")]
+      .map((row) => ({
+        theme: row.querySelector(".q-theme").value.trim(),
+        examples: splitAnswers(row.querySelector(".q-answers").value),
+      }))
+      .filter((q) => q.theme);
   }
 
   // 目標正解数からゲーム名を作る（5 → FIVE BOMBER / ファイブボンバー）
@@ -73,12 +94,14 @@ const Setup = (() => {
   function fill(data) {
     $("team-list").innerHTML = "";
     data.teams.forEach(addTeamCard);
-    $("input-questions").value = formatQuestions(data.questions);
+    $("question-list").innerHTML = "";
+    data.questions.forEach(addQuestionRow);
     $("input-time").value = data.settings.time;
     $("input-target").value = data.settings.target;
     $("input-point").value = data.settings.point;
     $("input-bonus").value = data.settings.bonus;
     $("input-shuffle").checked = data.settings.shuffle;
+    $("input-autojudge").checked = data.settings.autoJudge;
     $("input-bgm").checked = data.settings.bgm;
     $("input-volume").value = data.settings.volume;
     updateCount();
@@ -92,13 +115,14 @@ const Setup = (() => {
     }));
     return {
       teams,
-      questions: parseQuestions($("input-questions").value),
+      questions: readQuestions(),
       settings: {
         time: Number($("input-time").value) || 30,
         target: Number($("input-target").value) || 5,
         point: Number($("input-point").value) || 0,
         bonus: Number($("input-bonus").value) || 0,
         shuffle: $("input-shuffle").checked,
+        autoJudge: $("input-autojudge").checked,
         bgm: $("input-bgm").checked,
         volume: Number($("input-volume").value),
       },
@@ -106,7 +130,7 @@ const Setup = (() => {
   }
 
   function updateCount() {
-    $("q-count").textContent = parseQuestions($("input-questions").value).length;
+    $("q-count").textContent = readQuestions().length;
   }
 
   // ---------- 保存・読み込み ----------
@@ -171,6 +195,15 @@ const Setup = (() => {
       save();
     });
     $("btn-export").addEventListener("click", exportFile);
+    $("btn-add-question").addEventListener("click", () => {
+      addQuestionRow({ theme: "", examples: [] }).querySelector(".q-theme").focus();
+    });
+    $("btn-bulk-add").addEventListener("click", () => {
+      const added = parseBulk($("input-bulk").value);
+      added.forEach(addQuestionRow);
+      $("input-bulk").value = "";
+      save();
+    });
     document.querySelectorAll(".preset-btn").forEach((btn) => btn.addEventListener("click", () => {
       $("input-target").value = btn.dataset.target;
       save();
