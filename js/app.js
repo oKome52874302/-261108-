@@ -40,6 +40,7 @@ function playerFor(team, i) {
 function showScreen(name) {
   document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
   $(`screen-${name}`).classList.add("active");
+  if (name === "game") $("input-answer").focus();
 }
 
 // ---------- セットアップ ----------
@@ -306,7 +307,6 @@ function submitAnswer() {
   const input = $("input-answer");
   const text = input.value.trim();
   input.value = "";
-  input.blur();
   if (state.phase !== "playing" || !text) return;
   state.pending = text;
   if (isDuplicate(text)) markWrong();
@@ -517,7 +517,7 @@ const actions = {
     if (state.phase === "ready" || state.phase === "paused") startTimer();
     else if (state.phase === "playing") pauseTimer();
   },
-  answer() { if (state.phase === "playing") $("input-answer").focus(); },
+  answer: submitAnswer,
   correct: markCorrect,
   wrong: markWrong,
   undo,
@@ -527,32 +527,30 @@ const actions = {
   continue() { showScreen("game"); render(); },
 };
 
-// ショートカットは文字の出ないキーだけにする（文字キーは答えの入力に使うため）。
-// e.key ではなく e.code（物理キー）で見るのは、日本語入力がオンだと e.key が "Process" になるため
-const KEYMAP = {
-  Space: "toggle",
-  Enter: "answer",
-  NumpadEnter: "answer",
-  ArrowUp: "correct",
-  ArrowDown: "wrong",
-  Backspace: "undo",
-  ArrowRight: "next",
-  Tab: "score",
-  Escape: "settings",
-};
 
 // 入力欄から直接判定する（打った答えをそのまま○／×にする）
 function judgeFromInput(correct) {
   const input = $("input-answer");
   const text = input.value.trim();
   input.value = "";
-  input.blur();
   if (state.phase !== "playing") return;
   if (text) state.pending = text;
   if (correct) markCorrect();
   else markWrong();
 }
 
+// ゲーム画面では回答欄に常にカーソルを置く。
+// 入力欄の外で打ち始めると、最初の1文字だけ日本語入力を通らず半角で入ってしまうため
+const gameActive = () => $("screen-game").classList.contains("active");
+function focusInput() {
+  if (gameActive()) $("input-answer").focus();
+}
+$("input-answer").addEventListener("blur", () => setTimeout(() => {
+  if (document.activeElement === document.body) focusInput();
+}));
+
+// キー操作。入力欄が空のときは Space・Backspace・→・Esc をショートカットとして使い、
+// 文字が入っているときは文字入力を優先する（↑↓・Enter・Tab はいつでも使える）
 document.addEventListener("keydown", (e) => {
   // 設定画面・試合終了画面では文字入力やボタン操作を優先
   if ($("screen-setup").classList.contains("active") || $("screen-final").classList.contains("active")) return;
@@ -562,37 +560,47 @@ document.addEventListener("keydown", (e) => {
     if (e.code === "Tab" || e.code === "Escape") {
       e.preventDefault();
       toggleScore();
+      focusInput();
     }
     return;
   }
 
-  // 入力欄では文字入力を優先。Enter で判定へ送り、↑↓ でその答えを直接○×、Esc で入力をやめる
-  if (document.activeElement === input) {
-    // 日本語変換中（確定の Enter や候補選択の ↑↓）は触らない。Safari は isComposing が false になるため keyCode も見る
-    if (e.isComposing || e.keyCode === 229) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      submitAnswer();
-    } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-      e.preventDefault();
-      judgeFromInput(e.key === "ArrowUp");
-    } else if (e.key === "Escape") {
-      input.value = "";
-      input.blur();
-    }
-    return;
-  }
+  // 日本語変換中（確定の Enter や候補選択の ↑↓）は触らない。Safari は isComposing が false になるため keyCode も見る
+  if (e.isComposing || e.keyCode === 229) return;
+  if (document.activeElement !== input) focusInput();
+  const empty = input.value === "";
 
-  const action = KEYMAP[e.code];
-  if (action) {
+  const run = (fn) => {
     e.preventDefault();
-    actions[action]();
-    return;
+    fn();
+  };
+  switch (e.code) {
+    case "Enter": case "NumpadEnter":
+      return run(() => !empty && submitAnswer());
+    case "ArrowUp": case "ArrowDown":
+      return run(() => (empty ? actions[e.code === "ArrowUp" ? "correct" : "wrong"]() : judgeFromInput(e.code === "ArrowUp")));
+    case "Tab":
+      return run(actions.score);
+    case "Escape":
+      return run(() => (empty ? actions.settings() : (input.value = "")));
+    case "Space":
+      if (empty) run(actions.toggle);
+      return;
+    case "Backspace":
+      if (empty) run(actions.undo);
+      return;
+    case "ArrowRight":
+      if (empty) run(actions.next);
+      return;
   }
+});
 
-  // 回答中に文字キーを押したら、そのまま入力欄に打てるようにする
-  if (state.phase === "playing" && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key.length === 1 || e.key === "Process")) {
-    input.focus();
+// 日本語入力オンで空欄のまま Space を押すと全角スペースが入る（keydown では判別できない）ので、ここで開始/一時停止として扱う
+$("input-answer").addEventListener("input", (e) => {
+  const input = e.target;
+  if (!e.isComposing && input.value !== "" && input.value.trim() === "") {
+    input.value = "";
+    actions.toggle();
   }
 });
 
