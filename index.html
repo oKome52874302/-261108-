@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1p:wght@500;800&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=8">
+  <link rel="stylesheet" href="css/style.css?v=9">
 </head>
 <body>
   <!-- 設定画面 -->
@@ -71,7 +71,13 @@
           <input id="input-bonus" type="number" min="0" max="100" value="0">
         </label>
         <label class="check"><input id="input-shuffle" type="checkbox" checked> お題をシャッフル</label>
-        <label class="check"><input id="input-autojudge" type="checkbox" checked> 正解リストにある答えは自動で○</label>
+        <label>自動判定（正解リストにある答えを自動で○）
+          <select id="input-autojudge">
+            <option value="loose">ゆるめ（表記ゆれ＋少しの打ち間違いもOK）</option>
+            <option value="normal">ふつう（表記ゆれまでOK）</option>
+            <option value="off">しない（すべて判定役が決める）</option>
+          </select>
+        </label>
         <label>音量
           <input id="input-volume" type="range" min="0" max="1" step="0.05" value="0.8">
         </label>
@@ -175,9 +181,9 @@
     <button type="button" class="sub-btn" data-action="score">ゲームに戻る</button>
   </section>
 
-  <script src="data/questions.js?v=8"></script>
-  <script src="js/sound.js?v=8"></script>
-  <script src="js/setup.js?v=8"></script>
-  <script src="js/app.js?v=8"></script>
+  <script src="data/questions.js?v=9"></script>
+  <script src="js/sound.js?v=9"></script>
+  <script src="js/setup.js?v=9"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>

@@ -65,6 +65,7 @@ html, body {
 .setup-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 360px)); gap: 16px 32px; font-size: 18px; }
 .setup-grid label { display: flex; flex-direction: column; gap: 6px; }
 .setup-grid label.check { flex-direction: row; align-items: center; }
+.setup-grid select { font-size: 16px; padding: 6px 10px; border-radius: 6px; border: none; font-family: inherit; }
 .setup-grid input, .setup-grid textarea { font-size: 18px; padding: 6px 10px; border-radius: 6px; border: none; }
 .big-btn {
   margin-top: 4vh; font-family: var(--telop); font-size: 30px; padding: 14px 60px; border: 3px solid #000; border-radius: 14px; cursor: pointer;

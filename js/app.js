@@ -237,14 +237,38 @@ function showFinal(reason) {
 }
 
 // ---------- 判定 ----------
-// 表記ゆれを吸収して比較する（全角半角・カタカナひらがな・空白・中黒・大文字小文字）
+// 表記ゆれを吸収して比較する
+// 全角半角・大文字小文字・カタカナ→ひらがな・長音や記号・小さい字・ヴ・づ/ぢ の違いを無視する
+const KANA_MAP = {
+  "ゔぁ": "ば", "ゔぃ": "び", "ゔぇ": "べ", "ゔぉ": "ぼ", "ゔ": "ぶ",
+  "ぁ": "あ", "ぃ": "い", "ぅ": "う", "ぇ": "え", "ぉ": "お", "っ": "つ", "ゃ": "や", "ゅ": "ゆ", "ょ": "よ", "ゎ": "わ",
+  "づ": "ず", "ぢ": "じ", "ゐ": "い", "ゑ": "え", "を": "お",
+};
+const KANA_RE = new RegExp(Object.keys(KANA_MAP).join("|"), "g");
+
 function normalize(text) {
   return text
     .normalize("NFKC")
     .toLowerCase()
     .replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
-    .replace(/[\s・･]/g, "");
+    .replace(KANA_RE, (m) => KANA_MAP[m])
+    .replace(/[\s・･ー〜~\-－—.,、。!！?？'"「」『』]/g, "");
 }
+
+// 2つの文字列の編集距離（打ち間違いの許容に使う）
+function editDistance(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+// ゆるめ判定で許す打ち間違いの文字数。短い答えは別の言葉になりやすいので許さない
+const allowedTypos = (len) => (len >= 7 ? 2 : len >= 4 ? 1 : 0);
 
 // 正解リストの1項目は「H 水素」（空白区切り）や「栃木（とちぎ）」（読み）のように別表記を含められる
 function alternatives(example) {
@@ -253,15 +277,19 @@ function alternatives(example) {
 }
 
 // 「栃木県」「渋谷駅」のように、よくある接尾語が付いていても正解扱いにする
-const SUFFIXES = ["県", "都", "府", "市", "区", "町", "村", "駅", "座"];
+const SUFFIXES = ["県", "都", "府", "道", "市", "区", "町", "村", "駅", "線", "座", "山", "川", "島", "語", "剤", "けん", "えき", "ざ"];
 
-// 一致する正解リストの番号（なければ -1）
-function exampleIndex(text) {
+// 一致する正解リストの番号（なければ -1）。loose なら打ち間違いも許す
+function exampleIndex(text, loose = state.settings.autoJudge === "loose") {
   const n = normalize(text);
+  if (!n) return -1;
   return currentQuestion().examples.findIndex((ex) =>
     alternatives(ex).some((alt) => {
       const a = normalize(alt);
-      return a && (n === a || SUFFIXES.some((suf) => n === a + suf));
+      if (!a) return false;
+      const forms = [a, ...SUFFIXES.map((suf) => a + suf)];
+      if (forms.includes(n)) return true;
+      return loose && editDistance(n, a) <= allowedTypos(a.length);
     }));
 }
 
@@ -282,7 +310,7 @@ function submitAnswer() {
   if (state.phase !== "playing" || !text) return;
   state.pending = text;
   if (isDuplicate(text)) markWrong();
-  else if (state.settings.autoJudge && matchesExample(text)) markCorrect();
+  else if (state.settings.autoJudge !== "off" && matchesExample(text)) markCorrect();
   else {
     Sound.tick();
     render();
