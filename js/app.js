@@ -223,6 +223,7 @@ function render() {
   const { target } = state.settings;
 
   $("team-name").textContent = team.name;
+  $("mode-name").textContent = Setup.modeName(target).en;
   const current = state.phase === "playing" || state.phase === "paused" ? playerFor(team, state.answers.length) : "";
   const retries = wrongsFor(state.answers.length).length;
   $("round-info").textContent = `第${state.round + 1}問　不正解 ${state.wrongs.length}`;
@@ -239,6 +240,8 @@ function render() {
 
   const slots = $("slots");
   slots.innerHTML = "";
+  // 7枠以上は2段に分ける
+  slots.style.setProperty("--cols", target <= 6 ? target : Math.ceil(target / 2));
   for (let i = 0; i < target; i++) {
     const el = document.createElement("div");
     el.className = "slot";
