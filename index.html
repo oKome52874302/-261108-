@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1p:wght@500;800&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=10">
+  <link rel="stylesheet" href="css/style.css?v=11">
 </head>
 <body>
   <!-- 設定画面 -->
@@ -71,6 +71,7 @@
           <input id="input-bonus" type="number" min="0" max="100" value="0">
         </label>
         <label class="check"><input id="input-shuffle" type="checkbox" checked> お題をシャッフル</label>
+        <label class="check"><input id="input-hold" type="checkbox" checked> 答えの入力中・判定中はタイマーを止める</label>
         <label>自動判定（正解リストにある答えを自動で○）
           <select id="input-autojudge">
             <option value="loose">ゆるめ（表記ゆれ＋少しの打ち間違いもOK）</option>
@@ -181,9 +182,9 @@
     <button type="button" class="sub-btn" data-action="score">ゲームに戻る</button>
   </section>
 
-  <script src="data/questions.js?v=10"></script>
-  <script src="js/sound.js?v=10"></script>
-  <script src="js/setup.js?v=10"></script>
-  <script src="js/app.js?v=10"></script>
+  <script src="data/questions.js?v=11"></script>
+  <script src="js/sound.js?v=11"></script>
+  <script src="js/setup.js?v=11"></script>
+  <script src="js/app.js?v=11"></script>
 </body>
 </html>

@@ -12,7 +12,7 @@ const Setup = (() => {
         { name: "Bチーム", players: [] },
       ],
       questions: (window.QUESTIONS || []).map((q) => ({ theme: q.theme, examples: q.examples || [] })),
-      settings: { time: 30, target: 5, point: 10, bonus: 0, maxTurns: 3, goalPoints: 0, finishTurn: true, shuffle: true, autoJudge: "loose", bgm: true, volume: 0.8 },
+      settings: { time: 30, target: 5, point: 10, bonus: 0, maxTurns: 3, goalPoints: 0, finishTurn: true, shuffle: true, autoJudge: "loose", holdWhileJudging: true, bgm: true, volume: 0.8 },
     };
   }
 
@@ -105,6 +105,7 @@ const Setup = (() => {
     $("input-finish-turn").checked = data.settings.finishTurn;
     $("input-shuffle").checked = data.settings.shuffle;
     $("input-autojudge").value = data.settings.autoJudge;
+    $("input-hold").checked = data.settings.holdWhileJudging;
     $("input-bgm").checked = data.settings.bgm;
     $("input-volume").value = data.settings.volume;
     updateCount();
@@ -129,6 +130,7 @@ const Setup = (() => {
         finishTurn: $("input-finish-turn").checked,
         shuffle: $("input-shuffle").checked,
         autoJudge: $("input-autojudge").value,
+        holdWhileJudging: $("input-hold").checked,
         bgm: $("input-bgm").checked,
         volume: Number($("input-volume").value),
       },
