@@ -4,26 +4,56 @@ const Sound = (() => {
   let master = null;   // 全体音量
   let bgmBus = null;   // BGM 用（効果音より小さめ）
   let bgmEnabled = true;
+  let volume = 0.8;
+
+  function create() {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // 音が重なって音割れしないよう、最後にリミッターを通す
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -6;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.connect(ctx.destination);
+    master = ctx.createGain();
+    master.gain.value = volume;
+    master.connect(limiter);
+    bgmBus = ctx.createGain();
+    bgmBus.gain.value = 0.5;
+    bgmBus.connect(master);
+    ctx.addEventListener("statechange", resume);
+  }
+
+  // ブラウザは、別アプリへの切り替え・スリープ・出力機器の変化などで再生を止める（suspended / interrupted）。
+  // 止まったままだと無音になるので、音を鳴らす前や操作のたびに再開を試みる
+  function resume() {
+    if (ctx && ctx.state !== "running" && ctx.state !== "closed") ctx.resume().catch(() => {});
+  }
 
   // ブラウザの自動再生制限のため、最初のユーザー操作で呼ぶ
   function init() {
-    if (!ctx) {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      master = ctx.createGain();
-      master.connect(ctx.destination);
-      bgmBus = ctx.createGain();
-      bgmBus.gain.value = 0.5;
-      bgmBus.connect(master);
-    }
-    if (ctx.state === "suspended") ctx.resume();
+    if (!ctx || ctx.state === "closed") create();
+    resume();
+  }
+
+  // スピーカー・プロジェクターの付け外しで出力先が変わったら作り直す（古い出力先に鳴り続けて無音になるのを防ぐ）
+  function rebuild() {
+    if (!ctx) return;
+    const playing = bgm.timerId !== null;
+    stopBgm();
+    ctx.close().catch(() => {});
+    create();
+    resume();
+    if (playing) startBgm();
   }
 
   function setVolume(v) {
+    volume = v;
     if (master) master.gain.value = v;
   }
 
   function tone(freq, duration, type = "sine", delay = 0, volume = 0.3, dest = master) {
     if (!ctx) return;
+    resume();
     const t = ctx.currentTime + delay;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -89,6 +119,8 @@ const Sound = (() => {
 
   function scheduler() {
     const stepDur = 60 / bgm.tempo / 4;
+    // 再生が止まっていた・タブが裏に回っていた等で大きく遅れたら、溜まった音をまとめて鳴らさず今から再開する
+    if (bgm.nextTime < ctx.currentTime - 0.2) bgm.nextTime = ctx.currentTime + 0.05;
     while (bgm.nextTime < ctx.currentTime + 0.12) {
       scheduleStep(bgm.step, bgm.nextTime);
       bgm.nextTime += stepDur;
@@ -98,6 +130,7 @@ const Sound = (() => {
 
   function startBgm() {
     if (!ctx || !bgmEnabled || bgm.timerId) return;
+    resume();
     bgm.nextTime = ctx.currentTime + 0.05;
     bgm.timerId = setInterval(scheduler, 25);
   }
@@ -124,8 +157,19 @@ const Sound = (() => {
     if (!on) stopBgm();
   }
 
+  // 操作のたび・画面に戻ったときに再生を再開する（ブラウザは操作がないと再開を許さないことがある）
+  ["keydown", "pointerdown", "touchstart"].forEach((type) => document.addEventListener(type, resume, true));
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) resume();
+  });
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener("devicechange", rebuild);
+  }
+
   return {
     init,
+    state: () => (ctx ? ctx.state : "none"),   // 動作確認用
+    suspendForTest: () => ctx && ctx.suspend(),
     setVolume,
     setBgmEnabled,
     startBgm,
