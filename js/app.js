@@ -638,4 +638,10 @@ document.querySelectorAll("[data-action]").forEach((btn) => {
 
 $("btn-start").addEventListener("click", startGame);
 $("btn-resume").addEventListener("click", resumeGame);
+// 会場のスピーカーで音が出るかを事前に確かめる
+$("btn-sound-test").addEventListener("click", () => {
+  Sound.init();
+  Sound.setVolume(Number($("input-volume").value));
+  Sound.correct();
+});
 Setup.init();
