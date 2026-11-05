@@ -31,10 +31,20 @@ const currentTeam = () => state.teams[state.round % state.teams.length];
 const currentQuestion = () => state.question;
 const currentTurn = () => Math.floor(state.round / state.teams.length) + 1;
 
+// 枠の総数。往復（ハイパーボンバー）なら人数の2倍
+const totalSlots = () => state.settings.target * (state.settings.roundTrip ? 2 : 1);
+
+// i 番目の枠を答える人が、その問題の何人目か（0始まり）。
+// 往復なら 1→N のあと N→1 と折り返すので、N人目は折り返しで2回続けて答える
+function seatFor(i) {
+  const n = state.settings.target;
+  return i < n ? i : 2 * n - 1 - i;
+}
+
 // i 番目の枠を担当するプレイヤー名（プレイヤー未登録なら空文字）
 function playerFor(team, i) {
   if (team.players.length === 0) return "";
-  return team.players[(team.offset + i) % team.players.length];
+  return team.players[(team.offset + seatFor(i)) % team.players.length];
 }
 
 // ---------- 画面切り替え ----------
@@ -201,7 +211,7 @@ function finishRound() {
 }
 
 function isCleared() {
-  return state.answers.length >= state.settings.target;
+  return state.answers.length >= totalSlots();
 }
 
 // 得点 = 正解数 × 1人の点数 + (クリア時ボーナス)。「次へ」で確定させるので、結果画面でも取り消しが効く
@@ -223,7 +233,8 @@ function nextRound() {
   const team = currentTeam();
   team.score += roundPoints();
   // 次回は今回答えた人の続きから。時間切れなら詰まった人も「答えた」扱いで次の人へ
-  const answered = Math.min(state.settings.target, state.answers.length + (isCleared() ? 0 : 1));
+  const reached = Math.min(totalSlots(), state.answers.length + (isCleared() ? 0 : 1));
+  const answered = Math.min(state.settings.target, reached); // 往復で2回答えた人も1人と数える
   team.offset += answered;
   const result = checkEnd();
   state.round++;
@@ -300,18 +311,20 @@ function alternatives(example) {
 // 「栃木県」「渋谷駅」のように、よくある接尾語が付いていても正解扱いにする
 const SUFFIXES = ["県", "都", "府", "道", "市", "区", "町", "村", "駅", "線", "座", "山", "川", "島", "語", "剤", "けん", "えき", "ざ"];
 
-// 一致する正解リストの番号（なければ -1）。loose なら打ち間違いも許す
+// 一致する正解リストの番号（なければ -1）。loose なら打ち間違いも許す。
+// 打ち間違い扱いで別の項目に当たらないよう、表記ゆれまでで一致する項目を先に探す
 function exampleIndex(text, loose = state.settings.autoJudge === "loose") {
   const n = normalize(text);
   if (!n) return -1;
-  return currentQuestion().examples.findIndex((ex) =>
+  const find = (fuzzy) => currentQuestion().examples.findIndex((ex) =>
     alternatives(ex).some((alt) => {
       const a = normalize(alt);
       if (!a) return false;
-      const forms = [a, ...SUFFIXES.map((suf) => a + suf)];
-      if (forms.includes(n)) return true;
-      return loose && editDistance(n, a) <= allowedTypos(a.length);
+      if (!fuzzy) return [a, ...SUFFIXES.map((suf) => a + suf)].includes(n);
+      return editDistance(n, a) <= allowedTypos(a.length);
     }));
+  const exact = find(false);
+  return exact >= 0 || !loose ? exact : find(true);
 }
 
 const matchesExample = (text) => exampleIndex(text) >= 0;
@@ -419,16 +432,17 @@ function render() {
   syncHold();
   const team = currentTeam();
   const q = currentQuestion();
-  const { target } = state.settings;
+  const { target, roundTrip } = state.settings;
+  const total = totalSlots();
 
   $("team-name").textContent = team.name;
-  $("mode-name").textContent = Setup.modeName(target).en;
+  $("mode-name").textContent = Setup.modeName(target, roundTrip).en;
   const current = state.phase === "playing" || state.phase === "paused" ? playerFor(team, state.answers.length) : "";
   const retries = wrongsFor(state.answers.length).length;
   const { maxTurns, goalPoints } = state.settings;
   $("round-info").textContent = `第${currentTurn()}ターン${maxTurns ? ` / ${maxTurns}` : ""}　不正解 ${state.wrongs.length}`;
   renderMiniScore(team, goalPoints);
-  const label = current || `${state.answers.length + 1}人目`;
+  const label = current || `${seatFor(state.answers.length) + 1}人目`;
   $("current-player").textContent = (state.phase === "playing" || state.phase === "paused") && !isCleared()
     ? state.pending !== null
       ? `判定中…（↑：正解　↓：不正解）`
@@ -443,9 +457,13 @@ function render() {
 
   const slots = $("slots");
   slots.innerHTML = "";
-  // 7枠以上は2段に分ける
-  slots.style.setProperty("--cols", target <= 6 ? target : Math.ceil(target / 2));
-  for (let i = 0; i < target; i++) {
+  // 往復は2段にし、下の段を右から左に並べて、同じ人の枠を縦にそろえる。往復なしで7枠以上も2段
+  const cols = roundTrip || target <= 6 ? target : Math.ceil(target / 2);
+  slots.style.setProperty("--cols", cols);
+  slots.classList.toggle("two-rows", total > cols);
+  const order = [...Array(total).keys()];
+  if (roundTrip) order.splice(target, target, ...order.slice(target).reverse());
+  for (const i of order) {
     const el = document.createElement("div");
     el.className = "slot";
     const ans = state.answers[i];
