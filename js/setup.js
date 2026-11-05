@@ -12,7 +12,7 @@ const Setup = (() => {
         { name: "Bチーム", players: [] },
       ],
       questions: (window.QUESTIONS || []).map((q) => ({ theme: q.theme, examples: q.examples || [] })),
-      settings: { time: 30, target: 5, roundTrip: false, point: 10, bonus: 0, maxTurns: 3, goalPoints: 0, finishTurn: true, shuffle: true, autoJudge: "loose", holdWhileJudging: true, bgm: true, volume: 0.8 },
+      settings: { time: 30, target: 5, roundTrip: false, point: 10, bonus: 0, maxTurns: 3, goalPoints: 0, finishTurn: true, shuffle: true, bgm: true, volume: 0.8 },
     };
   }
 
@@ -111,8 +111,6 @@ const Setup = (() => {
     $("input-goal").value = data.settings.goalPoints;
     $("input-finish-turn").checked = data.settings.finishTurn;
     $("input-shuffle").checked = data.settings.shuffle;
-    $("input-autojudge").value = data.settings.autoJudge;
-    $("input-hold").checked = data.settings.holdWhileJudging;
     $("input-bgm").checked = data.settings.bgm;
     $("input-volume").value = data.settings.volume;
     updateCount();
@@ -137,8 +135,6 @@ const Setup = (() => {
         goalPoints: Math.max(0, Number($("input-goal").value) || 0),
         finishTurn: $("input-finish-turn").checked,
         shuffle: $("input-shuffle").checked,
-        autoJudge: $("input-autojudge").value,
-        holdWhileJudging: $("input-hold").checked,
         bgm: $("input-bgm").checked,
         volume: Number($("input-volume").value),
       },
@@ -167,13 +163,6 @@ const Setup = (() => {
     return defaultData();
   }
 
-  // 古い保存データ（自動判定がオン／オフの2択だった頃）を新しい形式に直す
-  function migrateSettings(settings) {
-    if (settings.autoJudge === true) settings.autoJudge = "loose";
-    if (settings.autoJudge === false) settings.autoJudge = "off";
-    return settings;
-  }
-
   // 読み込んだ JSON の欠けている項目を初期値で補う
   function normalize(raw) {
     const base = defaultData();
@@ -184,7 +173,7 @@ const Setup = (() => {
       questions: Array.isArray(raw.questions)
         ? raw.questions.filter((q) => q && q.theme).map((q) => ({ theme: String(q.theme), examples: (q.examples || []).map(String) }))
         : base.questions,
-      settings: migrateSettings({ ...base.settings, ...(raw.settings || {}) }),
+      settings: { ...base.settings, ...(raw.settings || {}) },
     };
   }
 

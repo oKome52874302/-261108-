@@ -104,8 +104,6 @@ body.in-game #btn-start { font-size: 18px; padding: 10px 30px; background: trans
 }
 .timer.danger { color: var(--ng); animation: pulse 1s infinite; }
 .timer.paused { opacity: .5; }
-/* 入力・判定中で止まっているとき */
-.timer.hold { color: #4fc3ff; animation: none; }
 #spark.lit .spark-core { animation: spark .15s infinite alternate; transform-box: fill-box; transform-origin: center; }
 
 .current-player { font-family: var(--telop); font-size: 2.8vw; color: var(--accent); text-shadow: var(--outline); min-height: 4vw; margin: .5vh 0 1vh; }
@@ -138,8 +136,8 @@ body.in-game #btn-start { font-size: 18px; padding: 10px 30px; background: trans
   background: radial-gradient(circle at 35% 30%, #fff, #c9d0f0 60%, #8a93c0); border: 3px solid #000;
 }
 .slot .player { font-family: var(--body); font-weight: 800; font-size: 1.5vw; color: #c7cff5; text-shadow: 0 2px 4px #000; }
-.slot .text { line-height: 1.15; word-break: break-all; }
-.slot .wrongs { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: center; font-family: var(--body); font-weight: 800; font-size: 1.5vw; color: var(--ng); text-shadow: 0 2px 4px #000; }
+.slot .text { line-height: 1; font-size: 1.8em; }
+.slot .wrongs { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: center; font-family: var(--body); font-weight: 800; font-size: 2.2vw; letter-spacing: .1em; color: var(--ng); text-shadow: 0 2px 4px #000; }
 
 .slot.current { border-color: var(--accent); box-shadow: 0 0 28px var(--accent), 0 6px 0 #05070f; }
 .slot.current .num { background: radial-gradient(circle at 35% 30%, #fff8c0, #ffcc00 60%, #d18a00); }
@@ -158,9 +156,6 @@ body.in-game #btn-start { font-size: 18px; padding: 10px 30px; background: trans
 .slots.two-rows { gap: 3.2vh var(--gap); margin: 2.5vh 0 1vh; }
 .slots.two-rows .slot { min-height: 11.5vh; padding-top: 2.4vh; }
 
-/* 判定待ち */
-.slot.pending { border-color: #4fc3ff; box-shadow: 0 0 28px #4fc3ff, 0 6px 0 #05070f; animation: pendingPulse 1s infinite; }
-.slot .pending-text { color: #bfe9ff; }
 .slot.pop { animation: pop .3s; }
 .slot.shake { animation: shake .4s; }
 
@@ -176,7 +171,6 @@ body.in-game #btn-start { font-size: 18px; padding: 10px 30px; background: trans
 .banner.clear .examples { color: #c7cff5; -webkit-text-fill-color: #c7cff5; }
 
 .operator { margin-top: auto; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: .7; }
-.operator input { width: 50%; font-size: 20px; padding: 6px 12px; border-radius: 6px; border: none; font-family: inherit; }
 .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .controls button { font-family: inherit; font-size: 13px; padding: 4px 10px; border-radius: 6px; border: 1px solid #333a66; background: rgba(10, 15, 44, .8); color: var(--muted); cursor: pointer; }
 .controls button:hover { color: #fff; border-color: var(--muted); }
@@ -215,7 +209,6 @@ body.quake .screen.active { animation: quake .5s; }
 .score-list { font-family: var(--telop); font-size: 4vw; width: 60%; text-shadow: var(--outline); }
 .score-list li { display: flex; justify-content: space-between; border-bottom: 2px solid var(--panel); padding: 1vh 0; }
 
-@keyframes pendingPulse { 50% { box-shadow: 0 0 8px #4fc3ff, 0 6px 0 #05070f; } }
 @keyframes shake { 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
 @keyframes pulse { 50% { transform: scale(1.12); } }
 @keyframes pop { 0% { transform: scale(.6); } 70% { transform: scale(1.1); } 100% { transform: scale(1); } }

@@ -18,12 +18,11 @@ const state = {
   answers: [],        // 正解した回答テキスト
   wrongs: [],         // 不正解 { slot, text }。同じ枠の人が考え直す
   history: [],        // 判定の履歴（"correct" | "wrong"）。取り消し用
-  pending: null,      // 入力済みで判定待ちの回答（null = なし）
   remainingMs: 0,
   endAt: 0,
   timerId: null,
   lastTickSec: null,
-  holdStart: null,    // 入力・判定中でタイマーを止めた時刻（止めていなければ null）
+  spaceHold: false,   // Space を押している間の一時停止中か
   justFilled: false,  // 直前に正解した枠だけアニメーションさせる
 };
 
@@ -51,7 +50,8 @@ function playerFor(team, i) {
 function showScreen(name) {
   document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
   $(`screen-${name}`).classList.add("active");
-  if (name === "game") $("input-answer").focus();
+  // 押したボタンにフォーカスが残ると、Space でそのボタンまで反応してしまうので外す
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
 }
 
 // ---------- セットアップ ----------
@@ -144,7 +144,7 @@ function prepareRound() {
   state.answers = [];
   state.wrongs = [];
   state.history = [];
-  state.pending = null;
+  state.spaceHold = false;
   state.remainingMs = state.settings.time * 1000;
   state.lastTickSec = null;
   Sound.resetBgm();
@@ -156,35 +156,18 @@ function startTimer() {
   state.phase = "playing";
   Sound.startBgm();
   state.endAt = performance.now() + state.remainingMs;
-  state.holdStart = null;
   state.timerId = setInterval(updateTimer, 50);
   render();
 }
 
-// 残り時間。入力・判定中で止めている間は減らない
-const remainingNow = () => Math.max(0, state.endAt - (state.holdStart ?? performance.now()));
+const remainingNow = () => Math.max(0, state.endAt - performance.now());
 
 function pauseTimer() {
   clearInterval(state.timerId);
   state.remainingMs = remainingNow();
-  state.holdStart = null;
   state.phase = "paused";
   Sound.stopBgm();
   render();
-}
-
-// 回答欄に文字がある間と判定待ちの間はタイマーを止める（設定でオフにできる）。
-// 操作役が打ち込む時間でチームが損をしないようにするため
-function syncHold() {
-  const hold = state.phase === "playing" && state.settings.holdWhileJudging
-    && ($("input-answer").value !== "" || state.pending !== null);
-  if (hold && state.holdStart === null) {
-    state.holdStart = performance.now();
-  } else if (!hold && state.holdStart !== null) {
-    state.endAt += performance.now() - state.holdStart;
-    state.holdStart = null;
-  }
-  $("timer").classList.toggle("hold", state.holdStart !== null);
 }
 
 function updateTimer() {
@@ -269,96 +252,12 @@ function showFinal(reason) {
 }
 
 // ---------- 判定 ----------
-// 表記ゆれを吸収して比較する
-// 全角半角・大文字小文字・カタカナ→ひらがな・長音や記号・小さい字・ヴ・づ/ぢ の違いを無視する
-const KANA_MAP = {
-  "ゔぁ": "ば", "ゔぃ": "び", "ゔぇ": "べ", "ゔぉ": "ぼ", "ゔ": "ぶ",
-  "ぁ": "あ", "ぃ": "い", "ぅ": "う", "ぇ": "え", "ぉ": "お", "っ": "つ", "ゃ": "や", "ゅ": "ゆ", "ょ": "よ", "ゎ": "わ",
-  "づ": "ず", "ぢ": "じ", "ゐ": "い", "ゑ": "え", "を": "お",
-};
-const KANA_RE = new RegExp(Object.keys(KANA_MAP).join("|"), "g");
-
-function normalize(text) {
-  return text
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
-    .replace(KANA_RE, (m) => KANA_MAP[m])
-    .replace(/[\s・･ー〜~\-－—.,、。!！?？'"「」『』]/g, "");
-}
-
-// 2つの文字列の編集距離（打ち間違いの許容に使う）
-function editDistance(a, b) {
-  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
-  for (let j = 1; j <= b.length; j++) dp[0][j] = j;
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    }
-  }
-  return dp[a.length][b.length];
-}
-
-// ゆるめ判定で許す打ち間違いの文字数。短い答えは別の言葉になりやすいので許さない
-const allowedTypos = (len) => (len >= 7 ? 2 : len >= 4 ? 1 : 0);
-
-// 正解リストの1項目は「H 水素」（空白区切り）や「栃木（とちぎ）」（読み）のように別表記を含められる
-function alternatives(example) {
-  const parts = example.split(/[()（）\s]+/).filter(Boolean);
-  return [example, ...parts];
-}
-
-// 「栃木県」「渋谷駅」のように、よくある接尾語が付いていても正解扱いにする
-const SUFFIXES = ["県", "都", "府", "道", "市", "区", "町", "村", "駅", "線", "座", "山", "川", "島", "語", "剤", "けん", "えき", "ざ"];
-
-// 一致する正解リストの番号（なければ -1）。loose なら打ち間違いも許す。
-// 打ち間違い扱いで別の項目に当たらないよう、表記ゆれまでで一致する項目を先に探す
-function exampleIndex(text, loose = state.settings.autoJudge === "loose") {
-  const n = normalize(text);
-  if (!n) return -1;
-  const find = (fuzzy) => currentQuestion().examples.findIndex((ex) =>
-    alternatives(ex).some((alt) => {
-      const a = normalize(alt);
-      if (!a) return false;
-      if (!fuzzy) return [a, ...SUFFIXES.map((suf) => a + suf)].includes(n);
-      return editDistance(n, a) <= allowedTypos(a.length);
-    }));
-  const exact = find(false);
-  return exact >= 0 || !loose ? exact : find(true);
-}
-
-const matchesExample = (text) => exampleIndex(text) >= 0;
-
-// 既出判定：同じ表記か、正解リストの同じ項目に当たる答え（「栃木」と「栃木県」など）
-function isDuplicate(text) {
-  const idx = exampleIndex(text);
-  return state.answers.some((a) => normalize(a) === normalize(text) || (idx >= 0 && exampleIndex(a) === idx));
-}
-
-// 入力欄の回答を確定する。既出なら自動で×、正解リストにあれば自動で○、それ以外は判定待ち
-function submitAnswer() {
-  const input = $("input-answer");
-  const text = input.value.trim();
-  input.value = "";
-  if (state.phase !== "playing" || !text) return;
-  state.pending = text;
-  if (isDuplicate(text)) markWrong();
-  else if (state.settings.autoJudge !== "off" && matchesExample(text)) markCorrect();
-  else {
-    Sound.tick();
-    render();
-  }
-}
-
-function takePending() {
-  const text = state.pending || "";
-  state.pending = null;
-  return text;
-}
+// 正誤は判定役が ↑ / ↓ で決める。一時停止中（Space を押している間など）でも判定できる
+const judging = () => state.phase === "playing" || state.phase === "paused";
 
 function markCorrect() {
-  if (state.phase !== "playing") return;
-  state.answers.push(takePending() || "○");
+  if (!judging()) return;
+  state.answers.push("○");
   state.history.push("correct");
   state.justFilled = true;
   if (isCleared()) {
@@ -372,8 +271,8 @@ function markCorrect() {
 
 // 不正解でも枠は進まず、同じ人が考え直す
 function markWrong() {
-  if (state.phase !== "playing") return;
-  state.wrongs.push({ slot: state.answers.length, text: takePending() });
+  if (!judging()) return;
+  state.wrongs.push({ slot: state.answers.length });
   state.history.push("wrong");
   Sound.wrong();
   document.body.classList.remove("flash-ng");
@@ -388,12 +287,6 @@ const wrongsFor = (slot) => state.wrongs.filter((w) => w.slot === slot);
 
 // 判定ミスの取り消し（直前の判定を1つ戻す）
 function undo() {
-  // 判定待ちがあれば、まずそれを取り消す
-  if (state.pending !== null) {
-    state.pending = null;
-    render();
-    return;
-  }
   const last = state.history.pop();
   if (!last) return;
   if (last === "wrong") {
@@ -424,12 +317,11 @@ function renderTimer() {
   const tip = fuse.getPointAtLength(len * ratio);
   const spark = $("spark");
   spark.setAttribute("transform", `translate(${tip.x} ${tip.y})`);
-  spark.classList.toggle("lit", state.phase === "playing" && state.holdStart === null);
+  spark.classList.toggle("lit", state.phase === "playing");
   spark.style.display = ratio > 0 ? "" : "none";
 }
 
 function render() {
-  syncHold();
   const team = currentTeam();
   const q = currentQuestion();
   const { target, roundTrip } = state.settings;
@@ -437,16 +329,14 @@ function render() {
 
   $("team-name").textContent = team.name;
   $("mode-name").textContent = Setup.modeName(target, roundTrip).en;
-  const current = state.phase === "playing" || state.phase === "paused" ? playerFor(team, state.answers.length) : "";
+  const current = judging() ? playerFor(team, state.answers.length) : "";
   const retries = wrongsFor(state.answers.length).length;
   const { maxTurns, goalPoints } = state.settings;
   $("round-info").textContent = `第${currentTurn()}ターン${maxTurns ? ` / ${maxTurns}` : ""}　不正解 ${state.wrongs.length}`;
   renderMiniScore(team, goalPoints);
   const label = current || `${seatFor(state.answers.length) + 1}人目`;
-  $("current-player").textContent = (state.phase === "playing" || state.phase === "paused") && !isCleared()
-    ? state.pending !== null
-      ? `判定中…（↑：正解　↓：不正解）`
-      : `回答者：${label}${retries ? `（考え直し ${retries}回目）` : ""}`
+  $("current-player").textContent = judging() && !isCleared()
+    ? `回答者：${label}${retries ? `（考え直し ${retries}回目）` : ""}`
     : "";
   $("current-player").classList.toggle("retry", retries > 0);
 
@@ -469,23 +359,14 @@ function render() {
     const ans = state.answers[i];
     if (ans) el.classList.add("filled");
     if (ans && i === state.answers.length - 1 && state.justFilled) el.classList.add("pop");
-    else if (i === state.answers.length && state.phase === "playing") el.classList.add("current");
+    else if (i === state.answers.length && judging()) el.classList.add("current");
     el.innerHTML = `<span class="num">${i + 1}</span><span class="player"></span><span class="text"></span><span class="wrongs"></span>`;
     el.querySelector(".player").textContent = playerFor(team, i);
-    el.querySelector(".text").textContent = ans || "";
-    if (!ans && i === state.answers.length && state.pending !== null) {
-      el.classList.add("pending");
-      el.querySelector(".text").textContent = `${state.pending}？`;
-      el.querySelector(".text").classList.add("pending-text");
-    }
-    // 不正解だった回答を打ち消し線で表示（文字なしなら ✕ のみ）
+    el.querySelector(".text").textContent = ans ? "〇" : "";
+    // 不正解の回数だけ ✕ を表示
     const wrongs = wrongsFor(i);
     if (wrongs.length && !ans) el.classList.add("retry");
-    wrongs.forEach((w) => {
-      const span = document.createElement("s");
-      span.textContent = w.text ? `✕${w.text}` : "✕";
-      el.querySelector(".wrongs").appendChild(span);
-    });
+    el.querySelector(".wrongs").textContent = "✕".repeat(wrongs.length);
     slots.appendChild(el);
   }
 
@@ -498,10 +379,10 @@ function render() {
     banner.textContent = cleared ? "CLEAR!!" : "TIME UP";
     const info = document.createElement("div");
     info.className = "examples";
-    info.textContent = `+${roundPoints()}点　｜　正解リスト: ${q.examples.join("、") || "なし"}　｜　→ で次へ`;
+    info.textContent = `+${roundPoints()}点　｜　答えの例: ${q.examples.join("、") || "なし"}　｜　→ で次へ`;
     banner.appendChild(info);
   } else if (state.phase === "paused") {
-    banner.textContent = "一時停止中";
+    banner.textContent = state.spaceHold ? "一時停止中（Space を離すと再開）" : "一時停止中";
   }
 
   renderTimer();
@@ -556,7 +437,6 @@ const actions = {
     if (state.phase === "ready" || state.phase === "paused") startTimer();
     else if (state.phase === "playing") pauseTimer();
   },
-  answer: submitAnswer,
   correct: markCorrect,
   wrong: markWrong,
   undo,
@@ -567,86 +447,68 @@ const actions = {
 };
 
 
-// 入力欄から直接判定する（打った答えをそのまま○／×にする）
-function judgeFromInput(correct) {
-  const input = $("input-answer");
-  const text = input.value.trim();
-  input.value = "";
-  if (state.phase !== "playing") return;
-  if (text) state.pending = text;
-  if (correct) markCorrect();
-  else markWrong();
-}
-
-// ゲーム画面では回答欄に常にカーソルを置く。
-// 入力欄の外で打ち始めると、最初の1文字だけ日本語入力を通らず半角で入ってしまうため
-const gameActive = () => $("screen-game").classList.contains("active");
-function focusInput() {
-  if (gameActive()) $("input-answer").focus();
-}
-$("input-answer").addEventListener("blur", () => setTimeout(() => {
-  if (document.activeElement === document.body) focusInput();
-}));
-
-// キー操作。入力欄が空のときは Space・Backspace・→・Esc をショートカットとして使い、
-// 文字が入っているときは文字入力を優先する（↑↓・Enter・Tab はいつでも使える）
+// キー操作。Space は押している間だけ一時停止し、離すと再開する
 document.addEventListener("keydown", (e) => {
   // 設定画面・試合終了画面では文字入力やボタン操作を優先
   if ($("screen-setup").classList.contains("active") || $("screen-final").classList.contains("active")) return;
-  const input = $("input-answer");
 
   if ($("screen-score").classList.contains("active")) {
     if (e.code === "Tab" || e.code === "Escape") {
       e.preventDefault();
       toggleScore();
-      focusInput();
     }
     return;
   }
 
-  // 日本語変換中（確定の Enter や候補選択の ↑↓）は触らない。Safari は isComposing が false になるため keyCode も見る
-  if (e.isComposing || e.keyCode === 229) return;
-  if (document.activeElement !== input) focusInput();
-  const empty = input.value === "";
-
   const run = (fn) => {
     e.preventDefault();
-    fn();
+    if (!e.repeat) fn();
   };
   switch (e.code) {
-    case "Enter": case "NumpadEnter":
-      return run(() => !empty && submitAnswer());
-    case "ArrowUp": case "ArrowDown":
-      return run(() => (empty ? actions[e.code === "ArrowUp" ? "correct" : "wrong"]() : judgeFromInput(e.code === "ArrowUp")));
+    case "Space":
+      return run(spaceDown);
+    case "ArrowUp":
+      return run(actions.correct);
+    case "ArrowDown":
+      return run(actions.wrong);
+    case "Backspace":
+      return run(actions.undo);
+    case "ArrowRight":
+      return run(actions.next);
     case "Tab":
       return run(actions.score);
     case "Escape":
-      return run(() => {
-        if (empty) return actions.settings();
-        input.value = "";
-        syncHold();
-      });
-    case "Space":
-      if (empty) run(actions.toggle);
-      return;
-    case "Backspace":
-      if (empty) run(actions.undo);
-      return;
-    case "ArrowRight":
-      if (empty) run(actions.next);
-      return;
+      return run(actions.settings);
   }
 });
 
-// 日本語入力オンで空欄のまま Space を押すと全角スペースが入る（keydown では判別できない）ので、ここで開始/一時停止として扱う
-$("input-answer").addEventListener("input", (e) => {
-  const input = e.target;
-  if (!e.isComposing && input.value !== "" && input.value.trim() === "") {
-    input.value = "";
-    actions.toggle();
-  }
-  syncHold();
+document.addEventListener("keyup", (e) => {
+  if (e.code !== "Space" || !gameActive()) return;
+  e.preventDefault();
+  spaceUp();
 });
+// Space を押したまま別の画面に移ると keyup が届かないので、押しっぱなし扱いを解く（一時停止のまま）
+window.addEventListener("blur", () => {
+  state.spaceHold = false;
+});
+
+// お題が隠れているときは開始、回答中なら押している間だけ一時停止、一時停止中なら再開
+function spaceDown() {
+  if (state.phase === "ready" || state.phase === "paused") {
+    startTimer();
+  } else if (state.phase === "playing") {
+    state.spaceHold = true;
+    pauseTimer();
+  }
+}
+
+function spaceUp() {
+  if (!state.spaceHold) return;
+  state.spaceHold = false;
+  if (state.phase === "paused" && gameActive()) startTimer();
+}
+
+const gameActive = () => $("screen-game").classList.contains("active");
 
 // 画面下の操作ボタン（マウス・タッチ用）。フォーカスを奪わないようにして、Space の二重反応を防ぐ
 document.querySelectorAll("[data-action]").forEach((btn) => {
