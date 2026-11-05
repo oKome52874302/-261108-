@@ -12,7 +12,7 @@ const Setup = (() => {
         { name: "Bチーム", players: [] },
       ],
       questions: (window.QUESTIONS || []).map((q) => ({ theme: q.theme, examples: q.examples || [] })),
-      settings: { time: 30, target: 5, point: 10, bonus: 0, maxTurns: 3, goalPoints: 0, finishTurn: true, shuffle: true, autoJudge: "loose", holdWhileJudging: true, bgm: true, volume: 0.8 },
+      settings: { time: 30, target: 5, roundTrip: false, point: 10, bonus: 0, maxTurns: 3, goalPoints: 0, finishTurn: true, shuffle: true, autoJudge: "loose", holdWhileJudging: true, bgm: true, volume: 0.8 },
     };
   }
 
@@ -59,13 +59,19 @@ const Setup = (() => {
     ["SIX", "シックス"], ["SEVEN", "セブン"], ["EIGHT", "エイト"], ["NINE", "ナイン"], ["TEN", "テン"],
     ["ELEVEN", "イレブン"], ["TWELVE", "トゥエルブ"],
   ];
-  function modeName(target) {
+  // 往復ありは本家にならって「ハイパーボンバー」（5人以外は人数も付ける）
+  function modeName(target, roundTrip = false) {
     const [en, ja] = NAMES[target] || [String(target), String(target)];
+    if (roundTrip) {
+      return target === 5
+        ? { en: "HYPER BOMBER", ja: "ハイパーボンバー" }
+        : { en: `HYPER ${en} BOMBER`, ja: `ハイパー${ja}ボンバー` };
+    }
     return { en: `${en} BOMBER`, ja: `${ja}ボンバー` };
   }
 
   function updateTitle() {
-    const name = modeName(Number($("input-target").value) || 5);
+    const name = modeName(Number($("input-target").value) || 5, $("input-roundtrip").checked);
     $("logo").textContent = name.en;
     document.title = name.ja;
   }
@@ -98,6 +104,7 @@ const Setup = (() => {
     data.questions.forEach(addQuestionRow);
     $("input-time").value = data.settings.time;
     $("input-target").value = data.settings.target;
+    $("input-roundtrip").checked = data.settings.roundTrip;
     $("input-point").value = data.settings.point;
     $("input-bonus").value = data.settings.bonus;
     $("input-turns").value = data.settings.maxTurns;
@@ -123,6 +130,7 @@ const Setup = (() => {
       settings: {
         time: Number($("input-time").value) || 30,
         target: Number($("input-target").value) || 5,
+        roundTrip: $("input-roundtrip").checked,
         point: Number($("input-point").value) || 0,
         bonus: Number($("input-bonus").value) || 0,
         maxTurns: Math.max(0, Number($("input-turns").value) || 0),
@@ -221,6 +229,8 @@ const Setup = (() => {
     });
     document.querySelectorAll(".preset-btn").forEach((btn) => btn.addEventListener("click", () => {
       $("input-target").value = btn.dataset.target;
+      $("input-roundtrip").checked = btn.dataset.roundtrip === "1";
+      if (btn.dataset.time) $("input-time").value = btn.dataset.time;
       save();
     }));
     $("input-import").addEventListener("change", (e) => {

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1p:wght@500;800&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=12">
+  <link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
   <!-- 設定画面 -->
@@ -57,13 +57,15 @@
         <label>制限時間（秒）
           <input id="input-time" type="number" min="5" max="180" value="30">
         </label>
-        <label>目標正解数（＝1問で答える人数）
+        <label>1問で答える人数（枠の数）
           <input id="input-target" type="number" min="1" max="12" value="5">
           <span class="presets">
-            <button type="button" class="preset-btn" data-target="5">ファイブ（5）</button>
-            <button type="button" class="preset-btn" data-target="6">シックス（6）</button>
+            <button type="button" class="preset-btn" data-target="5" data-roundtrip="0" data-time="30">ファイブ（5人・30秒）</button>
+            <button type="button" class="preset-btn" data-target="6" data-roundtrip="0">シックス（6人）</button>
+            <button type="button" class="preset-btn" data-target="5" data-roundtrip="1" data-time="60">ハイパー（5人往復・60秒）</button>
           </span>
         </label>
+        <label class="check"><input id="input-roundtrip" type="checkbox"> 往復する（1→5→1 と折り返して、人数の2倍の正解でクリア）</label>
         <label>1人正解の点数
           <input id="input-point" type="number" min="0" max="100" value="10">
         </label>
@@ -183,9 +185,9 @@
     <button type="button" class="sub-btn" data-action="score">ゲームに戻る</button>
   </section>
 
-  <script src="data/questions.js?v=12"></script>
-  <script src="js/sound.js?v=12"></script>
-  <script src="js/setup.js?v=12"></script>
-  <script src="js/app.js?v=12"></script>
+  <script src="data/questions.js?v=13"></script>
+  <script src="js/sound.js?v=13"></script>
+  <script src="js/setup.js?v=13"></script>
+  <script src="js/app.js?v=13"></script>
 </body>
 </html>

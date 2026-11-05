@@ -154,6 +154,10 @@ body.in-game #btn-start { font-size: 18px; padding: 10px 30px; background: trans
 }
 .slot.filled .num { background: radial-gradient(circle at 35% 30%, #fff, #ffe7a0 60%, #ffb000); }
 .slot.filled .player { color: #4a1b00; text-shadow: none; }
+/* 2段のときは画面に収まるよう低くする */
+.slots.two-rows { gap: 3.2vh var(--gap); margin: 2.5vh 0 1vh; }
+.slots.two-rows .slot { min-height: 11.5vh; padding-top: 2.4vh; }
+
 /* 判定待ち */
 .slot.pending { border-color: #4fc3ff; box-shadow: 0 0 28px #4fc3ff, 0 6px 0 #05070f; animation: pendingPulse 1s infinite; }
 .slot .pending-text { color: #bfe9ff; }
