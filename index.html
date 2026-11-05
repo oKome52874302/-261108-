@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1p:wght@500;800&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=13">
+  <link rel="stylesheet" href="css/style.css?v=14">
 </head>
 <body>
   <!-- 設定画面 -->
@@ -38,14 +38,14 @@
 
     <div class="setup-section">
       <h2>お題</h2>
-      <p class="hint">左に「お題」、右に「正解」を「、」区切りで書きます。正解に書いた答えは自動で○になり、書いていない答えは判定役が○×を決めます（正解は空欄でもOK）。</p>
-      <div class="q-head"><span>お題</span><span>正解（、区切り）</span></div>
+      <p class="hint">左に「お題」、右に「答えの例」を「、」区切りで書きます。答えの例はラウンド終了後に画面に表示され、判定の参考になります（空欄でもOK）。</p>
+      <div class="q-head"><span>お題</span><span>答えの例（、区切り）</span></div>
       <div id="question-list" class="question-list"></div>
       <button id="btn-add-question" class="sub-btn">＋ お題を追加</button>
       <span class="hint">全 <span id="q-count">0</span> 問</span>
       <details class="bulk">
         <summary>まとめて追加（スプレッドシートから貼り付け）</summary>
-        <p class="hint">1行に1問。スプレッドシートの「お題」「正解」の2列をコピーして貼り付けるか、<code>お題 | 正解、正解</code> の形で書きます。</p>
+        <p class="hint">1行に1問。スプレッドシートの「お題」「答えの例」の2列をコピーして貼り付けるか、<code>お題 | 答え、答え</code> の形で書きます。</p>
         <textarea id="input-bulk" rows="5" spellcheck="false" placeholder="海に面していない都道府県 | 栃木、群馬、埼玉&#10;山手線の駅 | 東京、品川、渋谷"></textarea>
         <button id="btn-bulk-add" class="sub-btn">この内容を追加</button>
       </details>
@@ -73,14 +73,6 @@
           <input id="input-bonus" type="number" min="0" max="100" value="0">
         </label>
         <label class="check"><input id="input-shuffle" type="checkbox" checked> お題をシャッフル</label>
-        <label class="check"><input id="input-hold" type="checkbox" checked> 答えの入力中・判定中はタイマーを止める</label>
-        <label>自動判定（正解リストにある答えを自動で○）
-          <select id="input-autojudge">
-            <option value="loose">ゆるめ（表記ゆれ＋少しの打ち間違いもOK）</option>
-            <option value="normal">ふつう（表記ゆれまでOK）</option>
-            <option value="off">しない（すべて判定役が決める）</option>
-          </select>
-        </label>
         <label>音量
           <input id="input-volume" type="range" min="0" max="1" step="0.05" value="0.8">
         </label>
@@ -148,10 +140,8 @@
     <div id="banner" class="banner"></div>
 
     <footer class="operator">
-      <input id="input-answer" type="text" placeholder="ここに答えを打つ → Enter で判定へ／↑ 正解・↓ 不正解（Esc で消す）" autocomplete="off">
       <div class="controls">
-        <button type="button" data-action="toggle"><kbd>Space</kbd> 開始/一時停止</button>
-        <button type="button" data-action="answer"><kbd>Enter</kbd> 判定へ送る</button>
+        <button type="button" data-action="toggle"><kbd>Space</kbd> 開始／押している間 一時停止</button>
         <button type="button" data-action="correct" class="ctl-ok"><kbd>↑</kbd> 正解</button>
         <button type="button" data-action="wrong" class="ctl-ng"><kbd>↓</kbd> 不正解</button>
         <button type="button" data-action="undo"><kbd>Backspace</kbd> 取り消し</button>
@@ -185,9 +175,9 @@
     <button type="button" class="sub-btn" data-action="score">ゲームに戻る</button>
   </section>
 
-  <script src="data/questions.js?v=13"></script>
-  <script src="js/sound.js?v=13"></script>
-  <script src="js/setup.js?v=13"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="data/questions.js?v=14"></script>
+  <script src="js/sound.js?v=14"></script>
+  <script src="js/setup.js?v=14"></script>
+  <script src="js/app.js?v=14"></script>
 </body>
 </html>
