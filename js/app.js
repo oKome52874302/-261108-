@@ -69,6 +69,7 @@ function startGame() {
   state.queue = [];
   state.round = 0;
   state.started = true;
+  state.overtime = false;
 
   document.body.classList.add("in-game");
   showScreen("game");
@@ -105,6 +106,7 @@ function backToSetup() {
 
 // 設定画面で変えた内容を反映して、続きから再開する（スコア・回答順はそのまま）
 function resumeGame() {
+  state.overtime = false; // 設定を変えたら、新しい条件で勝敗判定をやり直す
   const data = Setup.read();
   if (data.questions.length === 0) return alert("お題を1問以上入力してください");
   applySettings(data.settings);
@@ -213,6 +215,7 @@ function explode() {
 }
 
 function nextRound() {
+  $("explosion").classList.remove("show"); // 時間切れ直後に次へ進んでも、爆発演出が次のチームの画面に残らないように
   const team = currentTeam();
   team.score += roundPoints();
   // 次回は今回答えた人の続きから。時間切れなら詰まった人も「答えた」扱いで次の人へ
@@ -227,6 +230,7 @@ function nextRound() {
 
 // 勝敗の判定。ラウンドの得点を確定した直後に呼ぶ
 function checkEnd() {
+  if (state.overtime) return null; // 「このまま続ける」を選んだ延長戦では終わらない
   const { maxTurns, goalPoints, finishTurn } = state.settings;
   const completed = state.round + 1;
   const turnDone = completed % state.teams.length === 0;
@@ -332,7 +336,8 @@ function render() {
   const current = judging() ? playerFor(team, state.answers.length) : "";
   const retries = wrongsFor(state.answers.length).length;
   const { maxTurns, goalPoints } = state.settings;
-  $("round-info").textContent = `第${currentTurn()}ターン${maxTurns ? ` / ${maxTurns}` : ""}　不正解 ${state.wrongs.length}`;
+  const turnLabel = state.overtime ? "（延長戦）" : maxTurns ? ` / ${maxTurns}` : "";
+  $("round-info").textContent = `第${currentTurn()}ターン${turnLabel}　不正解 ${state.wrongs.length}`;
   renderMiniScore(team, goalPoints);
   const label = current || `${seatFor(state.answers.length) + 1}人目`;
   $("current-player").textContent = judging() && !isCleared()
@@ -443,7 +448,12 @@ const actions = {
   next() { if (state.phase === "result") nextRound(); },
   score: toggleScore,
   settings: backToSetup,
-  continue() { showScreen("game"); render(); },
+  // 勝敗が決まったあとも遊び続ける。設定を変えるまで勝敗判定はしない
+  continue() {
+    state.overtime = true;
+    showScreen("game");
+    render();
+  },
 };
 
 

@@ -136,7 +136,8 @@ body.in-game #btn-start { font-size: 18px; padding: 10px 30px; background: trans
   background: radial-gradient(circle at 35% 30%, #fff, #c9d0f0 60%, #8a93c0); border: 3px solid #000;
 }
 .slot .player { font-family: var(--body); font-weight: 800; font-size: 1.5vw; color: #c7cff5; text-shadow: 0 2px 4px #000; }
-.slot .text { line-height: 1; font-size: 1.8em; }
+/* 〇は見出し用フォントだと「O」に見えるので本文フォントで描く */
+.slot .text { line-height: 1; font-size: 1.8em; font-family: var(--body); font-weight: 800; }
 .slot .wrongs { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: center; font-family: var(--body); font-weight: 800; font-size: 2.2vw; letter-spacing: .1em; color: var(--ng); text-shadow: 0 2px 4px #000; }
 
 .slot.current { border-color: var(--accent); box-shadow: 0 0 28px var(--accent), 0 6px 0 #05070f; }
